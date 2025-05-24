@@ -1,21 +1,14 @@
+
 {
   "name": "truck-english-trainer",
-  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
-  },
-  "dependencies": {
-    "formidable": "^3.5.4",
-    "next": "^13.5.11",
-    "openai": "^4.103.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "type": "module",
-  "devDependencies": {
-    "@types/formidable": "^3.4.5",
-    "@types/node": "^22.15.21"
+    "dev:frontend": "npm --workspace frontend run dev",
+    "dev:backend": "echo 'Backend runs on serverless — no dev needed'",
+    "build:frontend": "npm --workspace frontend run build"
   }
 }
