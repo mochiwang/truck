@@ -1,0 +1,362 @@
+[
+  {
+    "id": "001",
+    "role": "police",
+    "zh": "请靠边停车。",
+    "en": "Pull over to the side of the road."
+  },
+  {
+    "id": "002",
+    "role": "police",
+    "zh": "请熄火并出示您的驾照和车辆登记证。",
+    "en": "Turn off the engine and show me your driver's license and vehicle registration."
+  },
+  {
+    "id": "003",
+    "role": "driver",
+    "zh": "这是我的驾照和车辆登记证。",
+    "en": "Here are my driver's license and vehicle registration."
+  },
+  {
+    "id": "004",
+    "role": "police",
+    "zh": "您知道我为什么拦您吗？",
+    "en": "Do you know why I pulled you over?"
+  },
+  {
+    "id": "005",
+    "role": "driver",
+    "zh": "对不起，我不太清楚。",
+    "en": "I'm sorry, I'm not sure."
+  },
+  {
+    "id": "006",
+    "role": "police",
+    "zh": "您从哪里来，打算去哪里？",
+    "en": "Where are you coming from and where are you headed?"
+  },
+  {
+    "id": "007",
+    "role": "driver",
+    "zh": "我从洛杉矶出发，前往芝加哥。",
+    "en": "I left Los Angeles and I'm heading to Chicago."
+  },
+  {
+    "id": "008",
+    "role": "police",
+    "zh": "您运送的是什么货物？",
+    "en": "What are you hauling?"
+  },
+  {
+    "id": "009",
+    "role": "driver",
+    "zh": "我运送的是家具。",
+    "en": "I'm hauling furniture."
+  },
+  {
+    "id": "010",
+    "role": "police",
+    "zh": "请出示您的行车日志。",
+    "en": "Please show me your logbook."
+  },
+  {
+    "id": "011",
+    "role": "driver",
+    "zh": "这是我的行车日志。",
+    "en": "Here is my logbook."
+  },
+  {
+    "id": "012",
+    "role": "police",
+    "zh": "您今天开了多长时间的车？",
+    "en": "How long have you been driving today?"
+  },
+  {
+    "id": "013",
+    "role": "driver",
+    "zh": "我今天开了大约四个小时。",
+    "en": "I've been driving for about four hours today."
+  },
+  {
+    "id": "014",
+    "role": "police",
+    "zh": "您是否进行了出发前的车辆检查？",
+    "en": "Did you perform a pre-trip inspection?"
+  },
+  {
+    "id": "015",
+    "role": "driver",
+    "zh": "是的，我检查了刹车和轮胎。",
+    "en": "Yes, I checked the brakes and tires."
+  },
+  {
+    "id": "016",
+    "role": "police",
+    "zh": "请打开引擎盖。",
+    "en": "Please open the hood."
+  },
+  {
+    "id": "017",
+    "role": "driver",
+    "zh": "好的，请稍等。",
+    "en": "Okay, just a moment."
+  },
+  {
+    "id": "018",
+    "role": "police",
+    "zh": "请踩下刹车，我需要检查刹车系统。",
+    "en": "Press the brake pedal; I need to check the brake system."
+  },
+  {
+    "id": "019",
+    "role": "police",
+    "zh": "请打开所有车灯。",
+    "en": "Turn on all your lights, please."
+  },
+  {
+    "id": "020",
+    "role": "driver",
+    "zh": "灯已经打开了。",
+    "en": "The lights are on."
+  },
+  {
+    "id": "021",
+    "role": "police",
+    "zh": "请出示您的医疗证书。",
+    "en": "Please show me your medical certificate."
+  },
+  {
+    "id": "022",
+    "role": "driver",
+    "zh": "这是我的医疗证书。",
+    "en": "Here is my medical certificate."
+  },
+  {
+    "id": "023",
+    "role": "police",
+    "zh": "您是否携带了电子记录设备（ELD）的用户手册？",
+    "en": "Do you have the ELD user manual with you?"
+  },
+  {
+    "id": "024",
+    "role": "driver",
+    "zh": "是的，我有电子版的用户手册。",
+    "en": "Yes, I have a digital copy of the user manual."
+  },
+  {
+    "id": "025",
+    "role": "police",
+    "zh": "请传输您的电子日志。",
+    "en": "Please transmit your electronic logs."
+  },
+  {
+    "id": "026",
+    "role": "driver",
+    "zh": "我已经通过网络传输了日志。",
+    "en": "I've transmitted the logs via the web."
+  },
+  {
+    "id": "027",
+    "role": "police",
+    "zh": "您是否携带了至少八份空白的日志表格？",
+    "en": "Do you have at least eight blank log forms?"
+  },
+  {
+    "id": "028",
+    "role": "driver",
+    "zh": "是的，我有。",
+    "en": "Yes, I do."
+  },
+  {
+    "id": "029",
+    "role": "police",
+    "zh": "请出示您的年度车辆检查报告。",
+    "en": "Please show me your annual vehicle inspection report."
+  },
+  {
+    "id": "030",
+    "role": "driver",
+    "zh": "这是我的年度检查报告。",
+    "en": "Here is my annual inspection report."
+  },
+  {
+    "id": "031",
+    "role": "police",
+    "zh": "您的车辆保险是否有效？",
+    "en": "Is your vehicle insurance valid?"
+  },
+  {
+    "id": "032",
+    "role": "driver",
+    "zh": "是的，这是我的保险单。",
+    "en": "Yes, here is my insurance policy."
+  },
+  {
+    "id": "033",
+    "role": "police",
+    "zh": "请出示您的货运单据。",
+    "en": "Please show me your shipping documents."
+  },
+  {
+    "id": "034",
+    "role": "driver",
+    "zh": "这是我的提单。",
+    "en": "Here is my bill of lading."
+  },
+  {
+    "id": "035",
+    "role": "police",
+    "zh": "您是否携带了危险品？",
+    "en": "Are you carrying hazardous materials?"
+  },
+  {
+    "id": "036",
+    "role": "driver",
+    "zh": "不，我没有运送危险品。",
+    "en": "No, I'm not carrying hazardous materials."
+  },
+  {
+    "id": "037",
+    "role": "police",
+    "zh": "请出示您的车辆登记证。",
+    "en": "Please show me your vehicle registration."
+  },
+  {
+    "id": "038",
+    "role": "driver",
+    "zh": "这是我的车辆登记证。",
+    "en": "Here is my vehicle registration."
+  },
+  {
+    "id": "039",
+    "role": "police",
+    "zh": "请出示您的国际燃油税协议（IFTA）贴纸。",
+    "en": "Please show me your IFTA sticker."
+  },
+  {
+    "id": "040",
+    "role": "driver",
+    "zh": "这是我的IFTA贴纸。",
+    "en": "Here is my IFTA sticker."
+  },
+  {
+    "id": "041",
+    "role": "police",
+    "zh": "请出示您的国际注册计划（IRP）文件。",
+    "en": "Please show me your IRP documents."
+  },
+  {
+    "id": "042",
+    "role": "driver",
+    "zh": "这是我的IRP文件。",
+    "en": "Here are my IRP documents."
+  },
+  {
+    "id": "043",
+    "role": "police",
+    "zh": "请打开您的货箱，我需要检查货物的固定情况。",
+    "en": "Please open your cargo area; I need to check the load securement."
+  },
+  {
+    "id": "044",
+    "role": "driver",
+    "zh": "好的，请稍等。",
+    "en": "Okay, just a moment."
+  },
+  {
+    "id": "045",
+    "role": "police",
+    "zh": "您的货物固定得很好。",
+    "en": "Your cargo is well secured."
+  },
+    {
+    "id": "046",
+    "role": "police",
+    "zh": "请打开您的紧急设备箱。",
+    "en": "Please open your emergency equipment box."
+  },
+  {
+    "id": "047",
+    "role": "driver",
+    "zh": "这是我的紧急设备，包括三角警示牌和灭火器。",
+    "en": "Here is my emergency equipment, including the warning triangles and fire extinguisher."
+  },
+  {
+    "id": "048",
+    "role": "police",
+    "zh": "您是否知道您的尾灯有一个不亮？",
+    "en": "Are you aware that one of your tail lights is out?"
+  },
+  {
+    "id": "049",
+    "role": "driver",
+    "zh": "谢谢提醒，我会尽快更换。",
+    "en": "Thank you for letting me know. I’ll replace it as soon as possible."
+  },
+  {
+    "id": "050",
+    "role": "police",
+    "zh": "请提供您上一次车辆维修的记录。",
+    "en": "Please provide the maintenance record for this vehicle."
+  },
+  {
+    "id": "051",
+    "role": "driver",
+    "zh": "这是最近一次保养记录。",
+    "en": "Here is the most recent maintenance record."
+  },
+  {
+    "id": "052",
+    "role": "police",
+    "zh": "请下车并站在卡车旁边。",
+    "en": "Please step out of the truck and stand next to it."
+  },
+  {
+    "id": "053",
+    "role": "driver",
+    "zh": "好的，警官。",
+    "en": "Okay, officer."
+  },
+  {
+    "id": "054",
+    "role": "police",
+    "zh": "我将绕车一圈进行外观检查。",
+    "en": "I’m going to do a walk-around inspection of the truck."
+  },
+  {
+    "id": "055",
+    "role": "police",
+    "zh": "请保持在车旁，不要离开。",
+    "en": "Please stay by the truck and don’t leave."
+  },
+  {
+    "id": "056",
+    "role": "driver",
+    "zh": "明白了。",
+    "en": "Understood."
+  },
+  {
+    "id": "057",
+    "role": "police",
+    "zh": "一切检查完毕，目前没有发现违规问题。",
+    "en": "The inspection is complete. I didn't find any violations."
+  },
+  {
+    "id": "058",
+    "role": "police",
+    "zh": "这是您的文件，请收好。",
+    "en": "Here are your documents back. Please keep them safe."
+  },
+  {
+    "id": "059",
+    "role": "police",
+    "zh": "您可以继续上路了，注意安全。",
+    "en": "You’re free to go. Drive safely."
+  },
+  {
+    "id": "060",
+    "role": "driver",
+    "zh": "谢谢您，警官，您也辛苦了。",
+    "en": "Thank you, officer. Have a good day."
+  }
+]
