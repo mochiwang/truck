@@ -1,10 +1,4 @@
 {
-  "functions": {
-    "backend/api/**/*.ts": {
-      "memory": 512,
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/backend/api/$1" }
   ]
