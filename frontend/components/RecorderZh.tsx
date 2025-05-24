@@ -1,9 +1,17 @@
-// frontend/components/RecorderZh.tsx
 import React, { useRef, useState } from 'react';
 
 type Props = {
   onRecognized: (zhText: string) => void;
 };
+
+let cachedStream: MediaStream | null = null;
+
+// ✅ 缓存麦克风流，只请求一次权限
+async function getMicrophoneStream(): Promise<MediaStream> {
+  if (cachedStream) return cachedStream;
+  cachedStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  return cachedStream;
+}
 
 export default function RecorderZh({ onRecognized }: Props) {
   const [status, setStatus] = useState<'idle' | 'recording' | 'done'>('idle');
@@ -15,31 +23,39 @@ export default function RecorderZh({ onRecognized }: Props) {
     chunks.current = [];
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await getMicrophoneStream();
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
-      recorder.ondataavailable = (e) => chunks.current.push(e.data);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.current.push(e.data);
+        }
+      };
 
       recorder.onstop = async () => {
         const blob = new Blob(chunks.current, { type: 'audio/webm' });
         const formData = new FormData();
         formData.append('audio', blob, 'recording.webm');
 
-        const res = await fetch('/api/transcribe-zh', {
-          method: 'POST',
-          body: formData
-        });
+        try {
+          const res = await fetch('/api/transcribe-zh', {
+            method: 'POST',
+            body: formData
+          });
 
-        const data = await res.json();
-        onRecognized(data.text || '[识别失败]');
+          const data = await res.json();
+          onRecognized(data.text || '[识别失败]');
+        } catch (err) {
+          alert('转写失败，请稍后重试');
+        }
+
         setStatus('done');
-        stream.getTracks().forEach((track) => track.stop());
       };
 
       recorder.start();
     } catch (err) {
-      alert('🎙️ 无法访问麦克风，请检查权限设置');
+      alert('🎙️ 无法访问麦克风，请检查浏览器权限设置');
       setStatus('idle');
     }
   };
@@ -69,10 +85,10 @@ export default function RecorderZh({ onRecognized }: Props) {
       >
         🎤 按住说中文
       </button>
-      <div style={{ marginTop: 10 }}>
+      <div style={{ marginTop: 8 }}>
         {status === 'idle' && '按住按钮开始说话'}
-        {status === 'recording' && '录音中…'}
-        {status === 'done' && '识别完成 ✅'}
+        {status === 'recording' && '录音中…松开发送'}
+        {status === 'done' && '✅ 识别完成'}
       </div>
     </div>
   );

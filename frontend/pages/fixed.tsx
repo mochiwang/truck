@@ -84,9 +84,8 @@ export default function FixedPractice() {
         </div>
       )}
 
-      {feedback && (
-        <button onClick={handleNext} style={{ marginTop: 30 }}>➡️ 下一句</button>
-      )}
+<button onClick={handleNext} style={{ marginTop: 30 }}>➡️ 下一句</button>
+
     </div>
   );
 }
