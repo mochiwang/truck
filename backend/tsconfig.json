@@ -5,10 +5,7 @@
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "outDir": "dist"
+    "resolveJsonModule": true
   },
-  "include": ["api/**/*.ts"]
+  "include": ["api/**/*"]
 }
