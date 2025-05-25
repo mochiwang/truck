@@ -1,8 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { OpenAI } from 'openai';
-import formidable from 'formidable';
+import formidable, { Fields, Files } from 'formidable';
 import fs from 'fs';
 
+// 关闭默认 body 解析器（因为我们用 formidable）
 export const config = {
   api: {
     bodyParser: false
@@ -11,7 +12,7 @@ export const config = {
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -21,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     keepExtensions: true
   });
 
-  form.parse(req, async (err, fields, files) => {
+  form.parse(req, async (err: any, fields: Fields, files: Files) => {
     if (err) {
       console.error('❌ formidable parse error:', err);
       return res.status(500).json({ error: 'Form parse failed' });
@@ -41,7 +42,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       console.log('✅ Whisper 返回:', transcription.text);
-
       res.status(200).json({ text: transcription.text });
     } catch (e) {
       console.error('❌ Whisper API 出错:', e);
