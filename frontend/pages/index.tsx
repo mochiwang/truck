@@ -14,6 +14,10 @@ export default function HomePage() {
       <Link href="/freeTalk">
         <button style={buttonStyle}>💬 自由输入练习（开发中）</button>
       </Link>
+
+      <Link href="/scenario">
+        <button style={buttonStyle}>🎙️ 场景式对话练习</button>
+      </Link>
     </div>
   );
 }
