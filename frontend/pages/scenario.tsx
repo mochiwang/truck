@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import scenarioList from '../../data/scenarioList.json';
+import scenarioList from '../../data/sentenceList.json';
 import Recorder from '../components/Recorder';
 
 const API_BASE =

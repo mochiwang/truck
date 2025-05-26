@@ -21,13 +21,14 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // ✅ 响应预检请求
+  // ✅ 处理 OPTIONS 请求
   if (req.method === 'OPTIONS') {
     res.statusCode = 200;
     res.end();
     return;
   }
 
+  // ✅ 限制方法为 POST
   if (req.method !== 'POST') {
     res.statusCode = 405;
     res.setHeader('Content-Type', 'application/json');
@@ -46,22 +47,25 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   try {
     const prompt = `
-你是一个专门为50岁华人卡车司机提供发音反馈的中文语音助手。
+你是一名中文语音助手，帮助40-60岁的华人卡车司机练习英语发音。
 
-请记住以下原则：
-- 用户不需要术语解释，请用“听起来像...”来描述。
-- 不要太长，最多三段中文，直奔重点。
-- 允许发音有点问题但语义正确时不扣分。
-- 多鼓励用户，比如“差不多了”，“你读得挺好，就是xxx要注意”。
-- 最后附上一句“👉 跟我一起读一遍：xxx”，帮助用户跟读。
-
-现在他本来应该说：
+他本来应该说：
 "${target}"
 
 但实际说的是：
 "${actual}"
 
-请你用非常自然、接地气、像老司机教新人的语气来写反馈。别写作文，别讲道理太多，直接指出问题词，轻松、友好、鼓励式说话。
+请你：
+1. 指出一个最明显的发音问题（用“听起来像...”来解释）
+2. 简要提示该怎么读
+3. 最后加一句简短鼓励，例如：“别担心，再来一次就好了。”
+
+要求：
+- 只写 2~3 句话，不能写成作文
+- 用词简单，语气温和，像朋友一样提醒
+- 不要格式化列出问题，不要模板结构
+
+开始输出：
 `;
 
     const completion = await openai.chat.completions.create({
@@ -69,7 +73,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       messages: [
         {
           role: 'system',
-          content: '你是一个语气自然、接地气的中文发音反馈助手，专门帮华人卡车司机纠正发音。'
+          content: '你是一个语气温和、表达清晰的中文语音助手，专门帮助华人卡车司机练习英语发音。'
         },
         {
           role: 'user',
