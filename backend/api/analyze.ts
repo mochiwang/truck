@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { OpenAI } from 'openai';
 
-// 用 ReadableStream 获取 body 数据
+// ✅ 获取 JSON body 数据
 async function parseJsonBody(req: IncomingMessage): Promise<any> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
@@ -16,6 +16,19 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  // ✅ 设置 CORS 响应头
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // ✅ 处理预检请求
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 200;
+    res.end();
+    return;
+  }
+
+  // ✅ 限制方法为 POST
   if (req.method !== 'POST') {
     res.statusCode = 405;
     res.setHeader('Content-Type', 'application/json');
@@ -23,6 +36,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return;
   }
 
+  // ✅ 读取请求体
   const { target, actual } = await parseJsonBody(req);
 
   if (!target || !actual) {
