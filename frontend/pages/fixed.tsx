@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Recorder from '../components/Recorder';
-import sentenceList from '../../data/sentenceList.json';
+import sentenceList from '../../data/scenarioList.json';
 
 const API_BASE =
   process.env.NODE_ENV === 'development'
