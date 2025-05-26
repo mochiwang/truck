@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import Recorder from '../components/Recorder';
 import sentenceList from '../../data/sentenceList.json';
 
+// ✅ 设置后端 API 根路径（可切换本地和线上）
+const API_BASE =
+  process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000/api' // 本地调试用
+    : 'https://truck-backend.vercel.app/api'; // 部署后端域名
+
 export default function FixedPractice() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [transcription, setTranscription] = useState('');
@@ -32,23 +38,27 @@ export default function FixedPractice() {
     const formData = new FormData();
     formData.append('audio', blob, 'recording.webm');
 
-    const res = await fetch('/api/transcribe', {
+    // ✅ 发音频文件给后端 /transcribe
+    const res = await fetch(`${API_BASE}/transcribe`, {
       method: 'POST',
-      body: formData
+      body: formData,
     });
+
     const data = await res.json();
     const actual = data.text || '[无识别结果]';
     setTranscription(actual);
 
+    // ✅ 请求分析反馈 /analyze
     if (actual && current.en) {
-      const res2 = await fetch('/api/analyze', {
+      const res2 = await fetch(`${API_BASE}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           target: current.en,
-          actual: actual
-        })
+          actual: actual,
+        }),
       });
+
       const result = await res2.json();
       setFeedback(result.feedback || '[无反馈]');
     }
@@ -84,8 +94,7 @@ export default function FixedPractice() {
         </div>
       )}
 
-<button onClick={handleNext} style={{ marginTop: 30 }}>➡️ 下一句</button>
-
+      <button onClick={handleNext} style={{ marginTop: 30 }}>➡️ 下一句</button>
     </div>
   );
 }

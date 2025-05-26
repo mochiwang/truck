@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import Recorder from '../components/Recorder';
 import RecorderZh from '../components/RecorderZh';
 
+// ✅ 设置后端 API 根路径（根据环境自动切换）
+const API_BASE =
+  process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000/api'
+    : 'https://truck-backend.vercel.app/api';
+
 export default function FreeTalk() {
   const [zhInput, setZhInput] = useState('');
   const [enOutput, setEnOutput] = useState('');
@@ -15,7 +21,7 @@ export default function FreeTalk() {
     setTranscription('');
     setFeedback('');
     try {
-      const res = await fetch('/api/translate', {
+      const res = await fetch(`${API_BASE}/translate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: zhInput })
@@ -47,7 +53,7 @@ export default function FreeTalk() {
     const formData = new FormData();
     formData.append('audio', blob, 'recording.webm');
 
-    const res = await fetch('/api/transcribe', {
+    const res = await fetch(`${API_BASE}/transcribe`, {
       method: 'POST',
       body: formData
     });
@@ -56,7 +62,7 @@ export default function FreeTalk() {
     setTranscription(actual);
 
     if (actual && enOutput) {
-      const res2 = await fetch('/api/analyze', {
+      const res2 = await fetch(`${API_BASE}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
