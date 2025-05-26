@@ -2,11 +2,10 @@ import React, { useState } from 'react';
 import Recorder from '../components/Recorder';
 import sentenceList from '../../data/sentenceList.json';
 
-// ✅ 设置后端 API 根路径（可切换本地和线上）
 const API_BASE =
   process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000/api' // 本地调试用
-    : 'https://truck-backend.vercel.app/api'; // 部署后端域名
+    ? 'http://localhost:3000/api'
+    : 'https://truck-backend.vercel.app/api';
 
 export default function FixedPractice() {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -28,28 +27,39 @@ export default function FixedPractice() {
 
   const speakFeedback = () => {
     if (!feedback) return;
-    const utterance = new SpeechSynthesisUtterance(feedback);
-    utterance.lang = 'zh-CN';
-    utterance.rate = 0.95; // 放慢语速，适合长辈用户
-    speechSynthesis.speak(utterance);
+
+    // 中文反馈播报
+    const utterZh = new SpeechSynthesisUtterance(feedback);
+    utterZh.lang = 'zh-CN';
+    utterZh.rate = 0.95;
+    speechSynthesis.speak(utterZh);
+
+    // 自动提取最后的“跟我一起说一遍”英文内容
+    const match = feedback.match(/跟我.*?说一遍[:：\s]*["“”]?(.+?)["“”]?[，。！？]?$/i);
+    const repeatEn = match?.[1];
+
+    if (repeatEn) {
+      const utterEn = new SpeechSynthesisUtterance(repeatEn);
+      utterEn.lang = 'en-US';
+      utterEn.rate = 1;
+      speechSynthesis.speak(utterEn);
+    }
   };
 
   const handleTranscription = async (blob: Blob) => {
     const formData = new FormData();
     formData.append('audio', blob, 'recording.webm');
 
-    // ✅ 发音频文件给后端 /transcribe
     const res = await fetch(`${API_BASE}/transcribe`, {
       method: 'POST',
       body: formData,
     });
 
     const data = await res.json();
-    const actual = data.text || '[无识别结果]';
-    setTranscription(actual);
+    const actual = data.text?.trim() || '';
+    setTranscription(actual || '[无识别结果]');
 
-    // ✅ 请求分析反馈 /analyze
-    if (actual && current.en) {
+    if (actual && actual !== '[无识别结果]' && current.en) {
       const res2 = await fetch(`${API_BASE}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,7 +100,7 @@ export default function FixedPractice() {
         <div style={{ marginTop: 20 }}>
           <strong>🧠 反馈建议：</strong>
           <div style={{ whiteSpace: 'pre-wrap', marginTop: 6 }}>{feedback}</div>
-          <button onClick={speakFeedback} style={{ marginTop: 10 }}>🔊 播放反馈语音</button>
+          <button onClick={speakFeedback} style={{ marginTop: 10 }}>🔊 播放反馈与跟读</button>
         </div>
       )}
 

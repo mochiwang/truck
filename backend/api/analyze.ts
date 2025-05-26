@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { OpenAI } from 'openai';
 
-// ✅ 获取 JSON body 数据
+// ✅ 读取 JSON 请求体
 async function parseJsonBody(req: IncomingMessage): Promise<any> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
@@ -16,19 +16,18 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
-  // ✅ 设置 CORS 响应头
+  // ✅ 设置跨域响应头
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // ✅ 处理预检请求
+  // ✅ 响应预检请求
   if (req.method === 'OPTIONS') {
     res.statusCode = 200;
     res.end();
     return;
   }
 
-  // ✅ 限制方法为 POST
   if (req.method !== 'POST') {
     res.statusCode = 405;
     res.setHeader('Content-Type', 'application/json');
@@ -36,7 +35,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return;
   }
 
-  // ✅ 读取请求体
   const { target, actual } = await parseJsonBody(req);
 
   if (!target || !actual) {
@@ -48,33 +46,35 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   try {
     const prompt = `
-你是一个专门给50岁华人卡车司机做语音反馈的中文助手。
+你是一个专门为50岁华人卡车司机提供发音反馈的中文语音助手。
 
-他们不熟悉语言学术语，也不太懂什么是重音、音节、ch音，请你说得特别特别口语化，用“听起来像什么”解释，不要用术语。
+请记住以下原则：
+- 用户不需要术语解释，请用“听起来像...”来描述。
+- 不要太长，最多三段中文，直奔重点。
+- 允许发音有点问题但语义正确时不扣分。
+- 多鼓励用户，比如“差不多了”，“你读得挺好，就是xxx要注意”。
+- 最后附上一句“👉 跟我一起读一遍：xxx”，帮助用户跟读。
 
-现在用户本来应该说：
+现在他本来应该说：
 "${target}"
 
 但实际说的是：
 "${actual}"
 
-请你用下面这种“老司机教新手”风格来反馈：
-
-1. 哪个词读得不对，错在哪里？
-2. 你说的是：“xxx”，听起来像“yyy”，标准是“zzz”
-3. 怎么纠正？直接告诉他应该怎么读，多模仿几遍就行
-4. 用**纯中文、语气自然、有点口语感**，一句话只讲一个重点，别搞格式模板
-
-不要说“请练习发音”、“你的语音有问题”这种书面表达，要像老大哥教小弟一样。
-
-开始：
+请你用非常自然、接地气、像老司机教新人的语气来写反馈。别写作文，别讲道理太多，直接指出问题词，轻松、友好、鼓励式说话。
 `;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        { role: 'system', content: '你是一个老司机风格的中文发音反馈专家，专门给华人卡车司机讲问题。' },
-        { role: 'user', content: prompt }
+        {
+          role: 'system',
+          content: '你是一个语气自然、接地气的中文发音反馈助手，专门帮华人卡车司机纠正发音。'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
       ]
     });
 
