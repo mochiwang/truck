@@ -22,6 +22,10 @@ export default function HomePage() {
       <Link href="/sceneLoop">
         <button style={buttonStyle}>🎧 熟悉警察常用对话</button>
       </Link>
+
+      <Link href="/scenarioChallenge">
+        <button style={buttonStyle}>🧪 场景挑战（听→答）</button>
+      </Link>
     </div>
   );
 }
