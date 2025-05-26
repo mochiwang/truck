@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { OpenAI } from 'openai';
 
-// 获取 JSON body 工具
+// ✅ 获取 JSON body 工具
 async function parseJsonBody(req: IncomingMessage): Promise<any> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
@@ -11,13 +11,26 @@ async function parseJsonBody(req: IncomingMessage): Promise<any> {
   return JSON.parse(bodyStr);
 }
 
-// 初始化 GPT
+// ✅ 初始化 OpenAI 客户端
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!
 });
 
-// 主处理函数
+// ✅ 主处理函数
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  // ✅ 设置 CORS 响应头
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // ✅ 处理预检请求
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 200;
+    res.end();
+    return;
+  }
+
+  // ✅ 限制仅允许 POST
   if (req.method !== 'POST') {
     res.statusCode = 405;
     res.setHeader('Content-Type', 'application/json');
@@ -25,6 +38,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return;
   }
 
+  // ✅ 读取 body 内容
   const { text } = await parseJsonBody(req);
 
   if (!text) {
