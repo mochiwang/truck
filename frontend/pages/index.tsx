@@ -18,6 +18,10 @@ export default function HomePage() {
       <Link href="/scenario">
         <button style={buttonStyle}>🎙️ 场景式对话练习</button>
       </Link>
+
+      <Link href="/sceneLoop">
+        <button style={buttonStyle}>🎧 熟悉警察常用对话</button>
+      </Link>
     </div>
   );
 }
