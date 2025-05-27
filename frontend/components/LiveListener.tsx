@@ -1,9 +1,9 @@
-// frontend/components/Recorder.tsx
+// frontend/components/LiveListener.tsx
 
 import React, { useEffect, useState } from 'react';
 import { startMicStream } from '../utils/mic';
 
-export default function Recorder() {
+export default function LiveListener() {
   const [status, setStatus] = useState('等待麦克风授权...');
 
   useEffect(() => {
@@ -12,7 +12,6 @@ export default function Recorder() {
         const stream = await startMicStream();
         setStatus('🎙️ 麦克风已开启');
         console.log('🎧 Audio tracks:', stream.getAudioTracks());
-        // TODO: 下一步是送入 Deepgram WebSocket
       } catch {
         setStatus('❌ 无法获取麦克风权限');
       }
