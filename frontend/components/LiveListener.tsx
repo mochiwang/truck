@@ -6,23 +6,38 @@ const DEEPGRAM_KEY = process.env.NEXT_PUBLIC_DEEPGRAM_KEY!;
 
 export default function LiveListener() {
   const [status, setStatus] = useState('等待麦克风授权...');
-  const [log, setLog] = useState<string[]>([]); // 用于保存识别记录
+  const [log, setLog] = useState<string[]>([]); // 实时转写记录
 
   useEffect(() => {
+    let cleanup: () => void; // 清理函数用于断开连接
+
     (async () => {
       try {
         const stream = await startMicStream();
         setStatus('🎙️ 麦克风已开启');
         console.log('🎧 Microphone stream started');
 
-        connectToDeepgram(stream, (text) => {
-          console.log('📝 Transcript:', text);
-          setLog(prev => [...prev, text]); // 每条结果追加
-        }, DEEPGRAM_KEY);
-      } catch {
+        // ✅ 启动 Deepgram 识别，并获取关闭函数
+        cleanup = await connectToDeepgram(
+          stream,
+          (text) => {
+            console.log('📝 Transcript:', text);
+            setLog((prev) => [...prev, text]); // 追加识别结果
+          },
+          DEEPGRAM_KEY
+        );
+      } catch (err) {
+        console.error('❌ 获取麦克风失败:', err);
         setStatus('❌ 无法获取麦克风权限');
       }
     })();
+
+    return () => {
+      if (cleanup) {
+        console.log('🧹 页面卸载，断开 Deepgram 和麦克风');
+        cleanup();
+      }
+    };
   }, []);
 
   return (

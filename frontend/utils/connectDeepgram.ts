@@ -1,21 +1,19 @@
-// ✅ 建立 WebSocket，发送音频流，接收 transcript
 export async function connectToDeepgram(
   stream: MediaStream,
   onTranscript: (text: string) => void,
   deepgramKey: string
-) {
-  const socket = new WebSocket(`wss://api.deepgram.com/v1/listen?encoding=linear16&sample_rate=16000`, [
-    'token',
-    deepgramKey
-  ]);
+): Promise<() => void> {
+  const socket = new WebSocket(
+    `wss://api.deepgram.com/v1/listen?model=enhanced&encoding=linear16&sample_rate=16000`,
+    ['token', deepgramKey]
+  );
+
+  const audioContext = new AudioContext({ sampleRate: 16000 });
+  const source = audioContext.createMediaStreamSource(stream);
+  const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
   socket.onopen = () => {
     console.log('✅ Deepgram WebSocket connected');
-
-    const audioContext = new AudioContext({ sampleRate: 16000 });
-    const source = audioContext.createMediaStreamSource(stream);
-    const processor = audioContext.createScriptProcessor(4096, 1, 1);
-
     source.connect(processor);
     processor.connect(audioContext.destination);
 
@@ -43,6 +41,16 @@ export async function connectToDeepgram(
 
   socket.onclose = () => {
     console.warn('🔌 Deepgram WebSocket closed');
+  };
+
+  // ✅ 返回清理函数，用于组件卸载时断开连接
+  return () => {
+    console.log('🛑 清理 Deepgram 音频处理链路');
+    socket.close();
+    processor.disconnect();
+    source.disconnect();
+    stream.getTracks().forEach(track => track.stop());
+    audioContext.close();
   };
 }
 
