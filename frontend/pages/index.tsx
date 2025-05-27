@@ -1,8 +1,5 @@
-// frontend/pages/index.tsx
-
 import React from 'react';
 import Link from 'next/link';
-import LiveListener from '../components/LiveListener'; // 低语者监听器组件
 
 export default function HomePage() {
   return (
@@ -30,20 +27,13 @@ export default function HomePage() {
         <button style={buttonStyle}>🧪 场景挑战（听→答）</button>
       </Link>
 
-      {/* 分割线 */}
+      <Link href="/whisperer">
+        <button style={buttonStyle}>🧠 启动低语者（实时翻译）</button>
+      </Link>
+
       <hr style={{ margin: '60px 0', border: '1px solid #ccc' }} />
-
-      <h2>🧠 低语者 Whisperer（MVP 模式）</h2>
-      <p style={{ marginBottom: 20 }}>
-        本系统会自动监听警察说话，并在耳机中低语中文翻译。<br />
-        当前测试麦克风是否成功启动。
-      </p>
-
-      {/* ✅ 启动麦克风监听 */}
-      <LiveListener />
-
-      <p style={{ fontSize: 14, marginTop: 12, color: '#888' }}>
-        👆 如果你看到“🎙️ 麦克风已开启”，说明监听成功。打开控制台查看更多详情。
+      <p style={{ fontSize: 14, color: '#888' }}>
+        👆 点击“低语者”进入后开始实时识别与翻译，适合在被拦车时使用。
       </p>
     </div>
   );
