@@ -1,5 +1,8 @@
+// frontend/pages/index.tsx
+
 import React from 'react';
 import Link from 'next/link';
+import LiveListener from '../components/Recorder'; // 当前用 Recorder 实现第一步
 
 export default function HomePage() {
   return (
@@ -26,6 +29,21 @@ export default function HomePage() {
       <Link href="/scenarioChallenge">
         <button style={buttonStyle}>🧪 场景挑战（听→答）</button>
       </Link>
+
+      {/* 分割线 */}
+      <hr style={{ margin: '60px 0', border: '1px solid #ccc' }} />
+
+      <h2>🧠 低语者 Whisperer（MVP）</h2>
+      <p style={{ marginBottom: 20 }}>
+        系统将自动监听警察说话，并在耳机中低语中文翻译。<br />
+        本区用于测试麦克风权限与采集状态。
+      </p>
+
+      <LiveListener />
+
+      <p style={{ fontSize: 14, marginTop: 12, color: '#888' }}>
+        👆 如果你看到“🎙️ 麦克风已开启”，说明监听成功。打开控制台查看更多详情。
+      </p>
     </div>
   );
 }
