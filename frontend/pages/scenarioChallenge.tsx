@@ -56,7 +56,8 @@ export default function ScenarioChallenge() {
     }
 
     // 分析回答是否合理
-    const res3 = await fetch(`${API_BASE}/analyze`, {
+const res3 = await fetch(`${API_BASE}/analyze-understanding`, {
+
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ target: current.en, actual })
