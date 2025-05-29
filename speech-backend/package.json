@@ -9,7 +9,7 @@
   "dependencies": {
     "@google-cloud/speech": "^5.4.0",
     "dotenv": "^16.3.1",
-    "node-record-lpcm16": "^1.0.4",
+    "node-record-lpcm16": "^1.0.3",
     "node-webrtcvad": "^1.0.4",
     "ws": "^8.13.0"
   }
