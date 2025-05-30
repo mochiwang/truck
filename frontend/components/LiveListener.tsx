@@ -6,6 +6,8 @@ export default function LiveListener() {
   const [status, setStatus] = useState('⏳ 等待开始识别...');
   const [log, setLog] = useState<string[]>([]);
   const [translated, setTranslated] = useState<string[]>([]);
+  const [listening, setListening] = useState(false);
+
   const wsRef = useRef<WebSocket | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -119,15 +121,38 @@ export default function LiveListener() {
     mediaRecorderRef.current?.stop();
     mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
     wsRef.current?.close();
+    setStatus('🛑 识别已停止');
   };
 
   useEffect(() => {
-    startRecording();
     return () => stopRecording();
   }, []);
 
   return (
     <div style={{ marginTop: 20 }}>
+      <button
+        onClick={() => {
+          if (listening) {
+            stopRecording();
+          } else {
+            startRecording();
+          }
+          setListening(!listening);
+        }}
+        style={{
+          padding: '10px 20px',
+          backgroundColor: listening ? '#f44336' : '#4caf50',
+          color: 'white',
+          border: 'none',
+          borderRadius: 6,
+          marginBottom: 16,
+          fontSize: 16,
+          cursor: 'pointer',
+        }}
+      >
+        {listening ? '🛑 停止识别' : '🎤 开始识别'}
+      </button>
+
       <div style={badgeStyle(status)}>{status}</div>
 
       <div style={boxStyle}>
@@ -171,6 +196,7 @@ const badgeStyle = (status: string): React.CSSProperties => {
   else if (status.includes('❌')) bg = '#f44336';
   else if (status.includes('🔌')) bg = '#ff9800';
   else if (status.includes('⏳')) bg = '#2196f3';
+  else if (status.includes('🛑')) bg = '#9e9e9e';
 
   return {
     backgroundColor: bg,
