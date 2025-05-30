@@ -59,23 +59,29 @@ export default function LiveListener() {
     };
 
     ws.onmessage = (event) => {
-      console.log('📩 收到 WebSocket 消息:', event.data);
+      console.log('📩 原始消息（event.data）:', event.data);
 
       let transcript = '';
 
       try {
         const parsed = JSON.parse(event.data);
+        console.log('📦 JSON 解析结果:', parsed);
         if (parsed.transcript) {
           transcript = parsed.transcript;
         }
-      } catch {
-        transcript = event.data; // 兼容纯文本
+      } catch (e) {
+        console.warn('⚠️ JSON 解析失败，尝试 fallback 为纯文本');
+        transcript = event.data;
       }
 
-      if (transcript) {
+      console.log('🧪 提取出的 transcript:', transcript);
+
+      if (transcript?.trim()) {
         console.log('🧠 最终识别文本:', transcript);
         setLog((prev) => [...prev, transcript]);
         translateAndSpeak(transcript);
+      } else {
+        console.warn('⛔ 无 transcript 内容，跳过翻译');
       }
     };
 
