@@ -98,10 +98,15 @@ export default function LiveListener() {
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (e) => {
+        console.log('🎧 数据帧大小:', e.data.size);
         if (wsRef.current?.readyState === WebSocket.OPEN) {
           wsRef.current.send(e.data);
         }
       };
+
+      mediaRecorder.onstart = () => console.log('🎬 MediaRecorder 启动');
+      mediaRecorder.onstop = () => console.log('⏹️ MediaRecorder 停止');
+      mediaRecorder.onerror = (err) => console.error('🎤 MediaRecorder 错误:', err);
 
       mediaRecorder.start(250);
     } catch (err) {
