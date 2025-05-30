@@ -69,8 +69,7 @@ export default function LiveListener() {
           transcript = parsed.transcript;
         }
       } catch {
-        // fallback: treat as plain text
-        transcript = event.data;
+        transcript = event.data; // 兼容纯文本
       }
 
       if (transcript) {
@@ -81,7 +80,7 @@ export default function LiveListener() {
     };
 
     ws.onerror = (err) => {
-      console.error('WebSocket 错误:', err);
+      console.error('❌ WebSocket 错误:', err);
       setStatus('❌ WebSocket 连接错误');
     };
 
