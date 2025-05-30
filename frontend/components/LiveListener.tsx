@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { startPCMStream, stopPCMStream } from '../utils/startPCMStream';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_BACKEND || 'wss://speech-backend-xxxx.onrender.com';
 
@@ -9,10 +10,7 @@ export default function LiveListener() {
   const [listening, setListening] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const reconnectAttemptsRef = useRef(0);
-  const MAX_RETRIES = 5;
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   const translateAndSpeak = async (text: string) => {
     try {
@@ -36,31 +34,14 @@ export default function LiveListener() {
     }
   };
 
-  const attemptReconnect = () => {
-    if (reconnectAttemptsRef.current >= MAX_RETRIES) {
-      setStatus('❌ 多次重连失败，请刷新页面');
-      return;
-    }
-
-    const timeout = 1000 * (reconnectAttemptsRef.current + 1);
-    setTimeout(() => {
-      reconnectAttemptsRef.current += 1;
-      console.log(`🔁 第 ${reconnectAttemptsRef.current} 次尝试重连...`);
-      initWebSocket();
-    }, timeout);
-  };
-
-  const initWebSocket = () => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.close();
-    }
-
+  const start = async () => {
     const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
 
-    ws.onopen = () => {
+    ws.onopen = async () => {
       setStatus('🎙️ 麦克风已开启，识别中...');
-      reconnectAttemptsRef.current = 0;
+      const audioContext = await startPCMStream(ws);
+      audioContextRef.current = audioContext;
     };
 
     ws.onmessage = (event) => {
@@ -81,62 +62,27 @@ export default function LiveListener() {
     };
 
     ws.onclose = () => {
-      setStatus('🔌 连接断开，准备重连...');
-      attemptReconnect();
+      setStatus('🔌 连接断开');
     };
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
-
-      initWebSocket();
-
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
-        audioBitsPerSecond: 16000 * 16,
-      });
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (e) => {
-        console.log('🎧 数据帧大小:', e.data.size);
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(e.data);
-        }
-      };
-
-      mediaRecorder.onstart = () => console.log('🎬 MediaRecorder 启动');
-      mediaRecorder.onstop = () => console.log('⏹️ MediaRecorder 停止');
-      mediaRecorder.onerror = (err) => console.error('🎤 MediaRecorder 错误:', err);
-
-      mediaRecorder.start(250);
-    } catch (err) {
-      console.error('麦克风启动失败:', err);
-      setStatus('❌ 无法获取麦克风权限');
-    }
-  };
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+  const stop = () => {
+    stopPCMStream();
     wsRef.current?.close();
+    audioContextRef.current?.close();
     setStatus('🛑 识别已停止');
   };
 
   useEffect(() => {
-    return () => stopRecording();
+    return () => stop();
   }, []);
 
   return (
     <div style={{ marginTop: 20 }}>
       <button
         onClick={() => {
-          if (listening) {
-            stopRecording();
-          } else {
-            startRecording();
-          }
+          if (listening) stop();
+          else start();
           setListening(!listening);
         }}
         style={{
@@ -168,6 +114,7 @@ export default function LiveListener() {
   );
 }
 
+// ✅ 样式定义（不要漏）
 const boxStyle: React.CSSProperties = {
   marginTop: 12,
   padding: 16,

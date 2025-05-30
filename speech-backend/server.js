@@ -14,6 +14,13 @@ wss.on('connection', (ws) => {
   let recognizeStream = null;
 
   const startRecognitionStream = () => {
+    if (recognizeStream) {
+      try {
+        recognizeStream.destroy(); // 彻底关闭旧的
+      } catch (e) {}
+      recognizeStream = null;
+    }
+
     recognizeStream = client
       .streamingRecognize({
         config: {
@@ -24,11 +31,9 @@ wss.on('connection', (ws) => {
         interimResults: true,
       })
       .on('error', (err) => {
-        console.error('❌ STT error:', err.message);
+        console.error('❌ STT error:', err);
         ws.send(JSON.stringify({ error: err.message }));
-        // 自动销毁流（防止后续 write 报错）
-        recognizeStream?.destroy();
-        recognizeStream = null;
+        ws.close(); // 主动断开客户端（由前端重连）
       })
       .on('data', (data) => {
         const text = data.results?.[0]?.alternatives?.[0]?.transcript;
@@ -37,32 +42,29 @@ wss.on('connection', (ws) => {
           ws.send(JSON.stringify({ transcript: text }));
         }
       });
+
+    console.log('🎤 (Re)starting recognition stream');
   };
 
   ws.on('message', (msg) => {
     const buffer = Buffer.from(msg);
 
-    // ⚠️ 检查流是否有效（destroyed 或 writableEnded 都代表不能再用）
-    const invalid =
-      !recognizeStream ||
-      recognizeStream.destroyed ||
-      recognizeStream.writableEnded;
-
-    if (invalid) {
-      console.log('🎤 (Re)starting recognition stream');
+    if (!recognizeStream) {
       startRecognitionStream();
     }
 
-    try {
-      recognizeStream?.write(buffer);
-    } catch (err) {
-      console.error('❌ 写入 STT 出错:', err.message);
+    if (recognizeStream && !recognizeStream.writableEnded) {
+      recognizeStream.write(buffer);
+    } else {
+      console.warn('⚠️ 写入失败：流已关闭');
     }
   });
 
   ws.on('close', () => {
     console.log('❌ Client disconnected');
-    recognizeStream?.destroy();
-    recognizeStream = null;
+    if (recognizeStream) {
+      recognizeStream.end();
+      recognizeStream = null;
+    }
   });
 });
