@@ -4,6 +4,8 @@ import { startPCMStream, stopPCMStream } from '../utils/startPCMStream';
 const WS_URL = process.env.NEXT_PUBLIC_WS_BACKEND || 'wss://speech-backend-xxxx.onrender.com';
 
 export default function LiveListener() {
+  console.log('🚀 LiveListener 页面代码已加载！');
+
   const [status, setStatus] = useState('⏳ 等待开始识别...');
   const [log, setLog] = useState<string[]>([]);
   const [translated, setTranslated] = useState<string[]>([]);
