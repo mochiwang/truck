@@ -12,42 +12,41 @@ export default function LiveListener() {
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-const translateAndSpeak = async (text: string) => {
-  console.log('🎯 正在调用翻译函数，原始英文是：', text);
+  const translateAndSpeak = async (text: string) => {
+    console.log('🎯 正在调用翻译函数，原始英文是：', text);
 
-  try {
-    const res = await fetch('/api/translateWhisperer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    });
+    try {
+      const res = await fetch('/api/translateWhisperer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
 
-    console.log('🌐 翻译请求已发出');
+      console.log('🌐 翻译请求已发出');
 
-    const result = await res.json();
-    console.log('📥 翻译接口返回结果：', result);
+      const result = await res.json();
+      console.log('📥 翻译接口返回结果：', result);
 
-    if (result?.zh) {
-      console.log('🈶 成功取得中文翻译：', result.zh);
-      setTranslated((prev) => [...prev, result.zh]);
+      if (result?.zh) {
+        console.log('🈶 成功取得中文翻译：', result.zh);
+        setTranslated((prev) => [...prev, result.zh]);
 
-      const utter = new SpeechSynthesisUtterance(result.zh);
-      utter.lang = 'zh-CN';
+        const utter = new SpeechSynthesisUtterance(result.zh);
+        utter.lang = 'zh-CN';
 
-      utter.onstart = () => console.log('🔊 中文播报开始');
-      utter.onend = () => console.log('✅ 中文播报完成');
-      utter.onerror = (e) => console.error('❌ 中文播报失败:', e);
+        utter.onstart = () => console.log('🔊 中文播报开始');
+        utter.onend = () => console.log('✅ 中文播报完成');
+        utter.onerror = (e) => console.error('❌ 中文播报失败:', e);
 
-      speechSynthesis.cancel(); // 避免重叠朗读
-      speechSynthesis.speak(utter);
-    } else {
-      console.warn('⚠️ 接口返回无翻译内容');
+        speechSynthesis.cancel(); // 避免朗读重叠
+        speechSynthesis.speak(utter);
+      } else {
+        console.warn('⚠️ 接口返回无翻译内容');
+      }
+    } catch (err) {
+      console.error('❌ 翻译请求失败:', err);
     }
-  } catch (err) {
-    console.error('❌ 翻译请求失败:', err);
-  }
-};
-
+  };
 
   const start = async () => {
     const ws = new WebSocket(WS_URL);
@@ -60,14 +59,24 @@ const translateAndSpeak = async (text: string) => {
     };
 
     ws.onmessage = (event) => {
+      console.log('📩 收到 WebSocket 消息:', event.data);
+
+      let transcript = '';
+
       try {
-        const data = JSON.parse(event.data);
-        if (data.transcript) {
-          setLog((prev) => [...prev, data.transcript]);
-          translateAndSpeak(data.transcript);
+        const parsed = JSON.parse(event.data);
+        if (parsed.transcript) {
+          transcript = parsed.transcript;
         }
-      } catch (err) {
-        console.error('消息处理失败:', err);
+      } catch {
+        // fallback: treat as plain text
+        transcript = event.data;
+      }
+
+      if (transcript) {
+        console.log('🧠 最终识别文本:', transcript);
+        setLog((prev) => [...prev, transcript]);
+        translateAndSpeak(transcript);
       }
     };
 
@@ -129,7 +138,7 @@ const translateAndSpeak = async (text: string) => {
   );
 }
 
-// ✅ 样式定义（不要漏）
+// ✅ 样式定义
 const boxStyle: React.CSSProperties = {
   marginTop: 12,
   padding: 16,
