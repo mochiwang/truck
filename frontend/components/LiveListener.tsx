@@ -19,7 +19,24 @@ export default function LiveListener() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const lastTranslatedRef = useRef<string | null>(null); // ✅ 用于去重中文播报
+  const lastTranslatedRef = useRef<string | null>(null);
+
+  // ✅ 用于识别是否稳定（连续 1.5 秒没有更新）
+  const stableTranscript = useRef('');
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleTranscript = (incoming: string) => {
+    if (incoming !== stableTranscript.current) {
+      stableTranscript.current = incoming;
+
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+      timeoutRef.current = setTimeout(() => {
+        console.log('⏸️ 触发稳定语音判断，翻译:', stableTranscript.current);
+        translateAndSpeak(stableTranscript.current);
+      }, 1500); // ✅ 等 1.5 秒无更新再触发翻译
+    }
+  };
 
   const translateAndSpeak = async (text: string) => {
     console.log('🎯 正在调用翻译函数，原始英文是：', text);
@@ -40,7 +57,7 @@ export default function LiveListener() {
         lastTranslatedRef.current = result.zh;
         console.log('🈶 中文翻译成功：', result.zh);
         setTranslated((prev) => [...prev, result.zh]);
-        enqueueSpeak(result.zh); // ✅ 串行播报
+        enqueueSpeak(result.zh);
       } else {
         console.warn('⚠️ 翻译接口返回无内容');
       }
@@ -70,7 +87,7 @@ export default function LiveListener() {
 
       if (transcript?.trim()) {
         setLog((prev) => [...prev, transcript]);
-        translateAndSpeak(transcript);
+        handleTranscript(transcript); // ✅ 用稳定判断而非立即翻译
       }
     };
 
@@ -88,6 +105,7 @@ export default function LiveListener() {
     if (audioContextRef.current?.state !== 'closed') {
       audioContextRef.current?.close();
     }
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setStatus('🛑 识别已停止');
   };
 
