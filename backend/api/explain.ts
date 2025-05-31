@@ -13,12 +13,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { recentTexts } = req.body;
 
-  // ✅ 类型与长度校验
-  if (!Array.isArray(recentTexts) || recentTexts.length === 0 || recentTexts.length > 3) {
-    return res.status(400).json({ error: 'recentTexts 必须是 1~3 句英文数组' });
+  if (!Array.isArray(recentTexts) || recentTexts.length === 0) {
+    return res.status(400).json({ error: 'recentTexts 必须是英文字符串数组' });
   }
 
-  // ✅ 文本清理 + 长度控制
   const cleanTexts = recentTexts.map((t) =>
     String(t).trim().replace(/\s+/g, ' ').slice(0, 200)
   );
@@ -35,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 【总结】：...
 【句子1】：... - 中文翻译
 【句子2】：... - 中文翻译
-【句子3】：... - 中文翻译
+（根据句子数量继续）
 
 句子如下：
 ${cleanTexts.map((t, i) => `句子${i + 1}：${t}`).join('\n')}
@@ -47,8 +45,15 @@ ${cleanTexts.map((t, i) => `句子${i + 1}：${t}`).join('\n')}
       temperature: 0.4,
     });
 
-    const answer = completion.choices[0].message.content;
-    res.status(200).json({ summary: answer });
+    const answer = completion.choices[0].message.content || '';
+
+    // ✅ 只提取【总结】部分
+    const summaryLine = answer
+      .split('\n')
+      .find((line) => line.startsWith('【总结】'));
+    const summary = summaryLine?.replace('【总结】：', '').trim() || '';
+
+    res.status(200).json({ summary });
   } catch (err) {
     console.error('❌ GPT explain 调用失败:', err);
     res.status(500).json({ error: 'GPT explain failed' });
