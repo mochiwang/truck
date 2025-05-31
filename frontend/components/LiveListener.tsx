@@ -19,6 +19,7 @@ export default function LiveListener() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const lastTranslatedRef = useRef<string | null>(null); // ✅ 用于去重中文播报
 
   const translateAndSpeak = async (text: string) => {
     console.log('🎯 正在调用翻译函数，原始英文是：', text);
@@ -31,9 +32,15 @@ export default function LiveListener() {
 
       const result = await res.json();
       if (result?.zh) {
+        if (lastTranslatedRef.current === result.zh) {
+          console.log('⚠️ 跳过重复翻译:', result.zh);
+          return;
+        }
+
+        lastTranslatedRef.current = result.zh;
         console.log('🈶 中文翻译成功：', result.zh);
         setTranslated((prev) => [...prev, result.zh]);
-        enqueueSpeak(result.zh); // ✅ 加入播报队列（串行，不打断）
+        enqueueSpeak(result.zh); // ✅ 串行播报
       } else {
         console.warn('⚠️ 翻译接口返回无内容');
       }
