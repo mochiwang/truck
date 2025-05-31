@@ -2,12 +2,21 @@ import React, { useEffect, useRef, useState } from 'react';
 import { startPCMStream, stopPCMStream } from '../utils/startPCMStream';
 import { enqueueSpeak } from '../utils/speakQueue';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_BACKEND || 'wss://speech-backend-xxxx.onrender.com';
+const WS_URL = process.env.NEXT_PUBLIC_WS_BACKEND!;
 const API_BASE =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   (process.env.NODE_ENV === 'development'
     ? 'http://localhost:3000'
     : 'https://truck-backend.vercel.app');
+
+// ✅ 短词优先收录的警察口令关键词（小写）
+const PRIORITY_PHRASES = [
+  'stop', 'pull over', 'license', 'registration',
+  'insurance', 'step out', 'wait', 'hands', 'open the door',
+  'slow down', 'speeding', 'turn off the engine',
+];
+
+const KAYLA_KEYWORDS = ['凯拉', '卡', 'kayla', 'kala', 'kaila', '凯啦','杀手'];
 
 export default function LiveListener() {
   const [status, setStatus] = useState('⏳ 等待开始识别...');
@@ -56,22 +65,17 @@ export default function LiveListener() {
   };
 
   const translateAndSpeak = async (text: string) => {
-    const triggerKeywords = [
-      'kayla', '凯拉', '卡拉', '卡', '开拉', '开啦', 'kaila', 'kela','杀手'
-    ];
-
-    const lowerText = text.toLowerCase();
-    const isTrigger = triggerKeywords.some((keyword) => lowerText.includes(keyword));
-
-    if (isTrigger) {
+    const lower = text.toLowerCase();
+    const isKaylaTrigger = KAYLA_KEYWORDS.some(k => text.includes(k));
+    if (isKaylaTrigger) {
       console.log('🆘 触发 Kayla 总结逻辑');
       await explainLastFewLines();
       return;
     }
 
-    if (text.length < 6 || policeHistory.current.includes(text)) return;
-
-    if (/[.?!。？！]$/.test(text.trim())) {
+    // ✅ 收录到历史的条件：优先包含关键词 + 长度不重复
+    const isImportantPhrase = PRIORITY_PHRASES.some(p => lower.includes(p));
+    if ((text.length > 6 || isImportantPhrase) && !policeHistory.current.includes(text)) {
       policeHistory.current.push(text.trim());
       if (policeHistory.current.length > 10) {
         policeHistory.current.shift();
