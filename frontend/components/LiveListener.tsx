@@ -10,26 +10,25 @@ const API_BASE =
     : 'https://truck-backend.vercel.app');
 
 export default function LiveListener() {
-  console.log('🚀 LiveListener 页面代码已加载！');
-
   const [status, setStatus] = useState('⏳ 等待开始识别...');
-  const [log, setLog] = useState<string[]>([]);
   const [translated, setTranslated] = useState<string[]>([]);
   const [listening, setListening] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const lastTranslatedRef = useRef<string | null>(null);
-  const policeHistory = useRef<string[]>([]); // ✅ 缓存最近三条警察英文
+  const policeHistory = useRef<string[]>([]);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const stableTranscript = useRef('');
+  const prevTranscript = useRef<string | null>(null);
 
   const handleTranscript = (incoming: string) => {
     if (incoming !== stableTranscript.current) {
       stableTranscript.current = incoming;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = setTimeout(() => {
-        console.log('⏸️ 触发稳定语音判断，翻译:', stableTranscript.current);
+        if (stableTranscript.current === prevTranscript.current) return;
+        prevTranscript.current = stableTranscript.current;
         translateAndSpeak(stableTranscript.current);
       }, 1500);
     }
@@ -39,35 +38,34 @@ export default function LiveListener() {
     const contextLines = policeHistory.current.slice(-3);
     if (contextLines.length === 0) return;
 
-    const context = contextLines.map((line) => `警察说: ${line}`).join('\n');
-
     const res = await fetch(`${API_BASE}/api/explain`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ context }),
+      body: JSON.stringify({ recentTexts: contextLines }),
     });
 
     const data = await res.json();
-    if (data.explanation) {
-      enqueueSpeak(data.explanation);
+    if (data.summary) {
+      enqueueSpeak(data.summary);
     } else {
       enqueueSpeak('我不太确定他什么意思');
     }
   };
 
   const translateAndSpeak = async (text: string) => {
-    if (text.includes('没听懂')) {
-      console.log('🆘 用户请求 GPT 解释');
-      explainLastFewLines();
+    const isTrigger = ['没听懂', '没听清', '听不明白'].some(p => text.includes(p));
+    if (isTrigger) {
+      await explainLastFewLines();
       return;
     }
 
-    policeHistory.current.push(text);
-    if (policeHistory.current.length > 3) {
-      policeHistory.current.shift();
+    if (/[.?!]$/.test(text.trim())) {
+      policeHistory.current.push(text.trim());
+      if (policeHistory.current.length > 3) {
+        policeHistory.current.shift();
+      }
     }
 
-    console.log('🎯 正在调用翻译函数，原始英文是：', text);
     try {
       const res = await fetch(`${API_BASE}/api/translateWhisperer`, {
         method: 'POST',
@@ -77,20 +75,12 @@ export default function LiveListener() {
 
       const result = await res.json();
       if (result?.zh) {
-        if (lastTranslatedRef.current === result.zh) {
-          console.log('⚠️ 跳过重复翻译:', result.zh);
-          return;
-        }
+        if (lastTranslatedRef.current === result.zh) return;
         lastTranslatedRef.current = result.zh;
-        console.log('🈶 中文翻译成功：', result.zh);
         setTranslated((prev) => [...prev, result.zh]);
         enqueueSpeak(result.zh);
-      } else {
-        console.warn('⚠️ 翻译接口返回无内容');
       }
-    } catch (err) {
-      console.error('❌ 翻译请求失败:', err);
-    }
+    } catch {}
   };
 
   const start = async () => {
@@ -113,13 +103,11 @@ export default function LiveListener() {
       }
 
       if (transcript?.trim()) {
-        setLog((prev) => [...prev, transcript]);
         handleTranscript(transcript);
       }
     };
 
-    ws.onerror = (err) => {
-      console.error('❌ WebSocket 错误:', err);
+    ws.onerror = () => {
       setStatus('❌ WebSocket 连接错误');
     };
 
@@ -164,11 +152,6 @@ export default function LiveListener() {
 
       <div style={badgeStyle(status)}>{status}</div>
 
-      <div style={boxStyle}>
-        <strong>英文识别：</strong>
-        {log.length === 0 ? '🕰️ 正在等待语音输入…' : log.join('\n')}
-      </div>
-
       <div style={boxStyleAlt}>
         <strong>中文翻译：</strong>
         {translated.length === 0 ? '🈳 正在准备翻译…' : translated.join('\n')}
@@ -177,11 +160,11 @@ export default function LiveListener() {
   );
 }
 
-const boxStyle: React.CSSProperties = {
+const boxStyleAlt: React.CSSProperties = {
   marginTop: 12,
   padding: 16,
-  background: '#f0f0f0',
-  border: '1px solid #ccc',
+  background: '#fdfdfd',
+  border: '1px solid #ddd',
   borderRadius: 6,
   width: '80%',
   maxWidth: 600,
@@ -190,13 +173,6 @@ const boxStyle: React.CSSProperties = {
   fontSize: 16,
   minHeight: 100,
   whiteSpace: 'pre-line',
-};
-
-const boxStyleAlt: React.CSSProperties = {
-  ...boxStyle,
-  background: '#fdfdfd',
-  border: '1px solid #ddd',
-  marginTop: 12,
 };
 
 const badgeStyle = (status: string): React.CSSProperties => {
