@@ -16,7 +16,8 @@ const PRIORITY_PHRASES = [
   'slow down', 'speeding', 'turn off the engine',
 ];
 
-const KAYLA_KEYWORDS = ['凯拉', '卡', 'kayla', 'kala', 'kaila', '凯啦','杀手'];
+// ✅ 触发关键词：China 的多种翻译方式
+const CHINA_KEYWORDS = ['china', '中国', '瓷器', '拆那'];
 
 export default function LiveListener() {
   const [status, setStatus] = useState('⏳ 等待开始识别...');
@@ -45,7 +46,10 @@ export default function LiveListener() {
 
   const explainLastFewLines = async () => {
     const contextLines = policeHistory.current.slice(-3);
-    if (contextLines.length === 0) return;
+    if (contextLines.length === 0) {
+      enqueueSpeak('目前还没有足够内容让我总结哦');
+      return;
+    }
 
     try {
       const res = await fetch(`${API_BASE}/api/explain`, {
@@ -66,9 +70,9 @@ export default function LiveListener() {
 
   const translateAndSpeak = async (text: string) => {
     const lower = text.toLowerCase();
-    const isKaylaTrigger = KAYLA_KEYWORDS.some(k => text.includes(k));
-    if (isKaylaTrigger) {
-      console.log('🆘 触发 Kayla 总结逻辑');
+    const isChinaTrigger = CHINA_KEYWORDS.some(k => text.includes(k));
+    if (isChinaTrigger) {
+      console.log('🆘 触发 China 总结逻辑');
       await explainLastFewLines();
       return;
     }
