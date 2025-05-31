@@ -16,8 +16,8 @@ const PRIORITY_PHRASES = [
   'slow down', 'speeding', 'turn off the engine',
 ];
 
-// ✅ 触发关键词：China 的多种翻译方式
-const CHINA_KEYWORDS = ['china', '中国', '瓷器', '拆那'];
+// ✅ "China" 唤醒关键词（中英文混合）
+const CHINA_KEYWORDS = ['china', '中国', '瓷器', '拆那', 'chyna', 'chai na'];
 
 export default function LiveListener() {
   const [status, setStatus] = useState('⏳ 等待开始识别...');
@@ -46,10 +46,7 @@ export default function LiveListener() {
 
   const explainLastFewLines = async () => {
     const contextLines = policeHistory.current.slice(-3);
-    if (contextLines.length === 0) {
-      enqueueSpeak('目前还没有足够内容让我总结哦');
-      return;
-    }
+    if (contextLines.length === 0) return;
 
     try {
       const res = await fetch(`${API_BASE}/api/explain`, {
@@ -70,14 +67,15 @@ export default function LiveListener() {
 
   const translateAndSpeak = async (text: string) => {
     const lower = text.toLowerCase();
-    const isChinaTrigger = CHINA_KEYWORDS.some(k => text.includes(k));
+    const isChinaTrigger = CHINA_KEYWORDS.some(k => lower.includes(k));
+    console.log('[🎯 trigger check] transcript:', text, '→ matched:', isChinaTrigger);
+
     if (isChinaTrigger) {
       console.log('🆘 触发 China 总结逻辑');
       await explainLastFewLines();
       return;
     }
 
-    // ✅ 收录到历史的条件：优先包含关键词 + 长度不重复
     const isImportantPhrase = PRIORITY_PHRASES.some(p => lower.includes(p));
     if ((text.length > 6 || isImportantPhrase) && !policeHistory.current.includes(text)) {
       policeHistory.current.push(text.trim());
