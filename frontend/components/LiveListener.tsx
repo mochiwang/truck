@@ -56,10 +56,20 @@ export default function LiveListener() {
   };
 
   const translateAndSpeak = async (text: string) => {
-    const normalizedText = text.toLowerCase();
-    const isLikelyKaylaTrigger = normalizedText.includes('kayla');
+    const triggerKeywords = [
+      'kayla', '凯拉', '卡拉', '卡', '开拉', '开啦', 'kaila', 'kela'
+    ];
 
-    if (text.length < 2 || policeHistory.current.includes(text)) return;
+    const lowerText = text.toLowerCase();
+    const isTrigger = triggerKeywords.some((keyword) => lowerText.includes(keyword));
+
+    if (isTrigger) {
+      console.log('🆘 触发 Kayla 总结逻辑');
+      await explainLastFewLines();
+      return;
+    }
+
+    if (text.length < 6 || policeHistory.current.includes(text)) return;
 
     if (/[.?!。？！]$/.test(text.trim())) {
       policeHistory.current.push(text.trim());
@@ -77,24 +87,12 @@ export default function LiveListener() {
 
       const result = await res.json();
       if (result?.zh) {
-        const zh = result.zh.trim();
-        const isChineseKayla = zh.includes('凯拉');
-
-        if (lastTranslatedRef.current === zh) return;
-        lastTranslatedRef.current = zh;
-        setTranslated((prev) => [...prev, zh]);
-
-        if (isChineseKayla || isLikelyKaylaTrigger) {
-          console.log('🆘 触发 explain 总结逻辑（Kayla）');
-          await explainLastFewLines();
-          return;
-        }
-
-        enqueueSpeak(zh);
+        if (lastTranslatedRef.current === result.zh) return;
+        lastTranslatedRef.current = result.zh;
+        setTranslated((prev) => [...prev, result.zh]);
+        enqueueSpeak(result.zh);
       }
-    } catch (err) {
-      console.warn('⚠️ 翻译失败:', err);
-    }
+    } catch {}
   };
 
   const start = async () => {
