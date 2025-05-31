@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { startPCMStream, stopPCMStream } from '../utils/startPCMStream';
+import { enqueueSpeak } from '../utils/speakQueue';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_BACKEND || 'wss://speech-backend-xxxx.onrender.com';
 const API_BASE =
@@ -21,7 +22,6 @@ export default function LiveListener() {
 
   const translateAndSpeak = async (text: string) => {
     console.log('🎯 正在调用翻译函数，原始英文是：', text);
-
     try {
       const res = await fetch(`${API_BASE}/api/translateWhisperer`, {
         method: 'POST',
@@ -29,26 +29,13 @@ export default function LiveListener() {
         body: JSON.stringify({ text }),
       });
 
-      console.log('🌐 翻译请求已发出');
-
       const result = await res.json();
-      console.log('📥 翻译接口返回结果：', result);
-
       if (result?.zh) {
-        console.log('🈶 成功取得中文翻译：', result.zh);
+        console.log('🈶 中文翻译成功：', result.zh);
         setTranslated((prev) => [...prev, result.zh]);
-
-        const utter = new SpeechSynthesisUtterance(result.zh);
-        utter.lang = 'zh-CN';
-
-        utter.onstart = () => console.log('🔊 中文播报开始');
-        utter.onend = () => console.log('✅ 中文播报完成');
-        utter.onerror = (e) => console.error('❌ 中文播报失败:', e);
-
-        speechSynthesis.cancel(); // 避免朗读重叠
-        speechSynthesis.speak(utter);
+        enqueueSpeak(result.zh); // ✅ 加入播报队列（串行，不打断）
       } else {
-        console.warn('⚠️ 接口返回无翻译内容');
+        console.warn('⚠️ 翻译接口返回无内容');
       }
     } catch (err) {
       console.error('❌ 翻译请求失败:', err);
@@ -66,29 +53,17 @@ export default function LiveListener() {
     };
 
     ws.onmessage = (event) => {
-      console.log('📩 原始消息（event.data）:', event.data);
-
       let transcript = '';
-
       try {
         const parsed = JSON.parse(event.data);
-        console.log('📦 JSON 解析结果:', parsed);
-        if (parsed.transcript) {
-          transcript = parsed.transcript;
-        }
-      } catch (e) {
-        console.warn('⚠️ JSON 解析失败，尝试 fallback 为纯文本');
+        if (parsed.transcript) transcript = parsed.transcript;
+      } catch {
         transcript = event.data;
       }
 
-      console.log('🧪 提取出的 transcript:', transcript);
-
       if (transcript?.trim()) {
-        console.log('🧠 最终识别文本:', transcript);
         setLog((prev) => [...prev, transcript]);
         translateAndSpeak(transcript);
-      } else {
-        console.warn('⛔ 无 transcript 内容，跳过翻译');
       }
     };
 
@@ -97,15 +72,15 @@ export default function LiveListener() {
       setStatus('❌ WebSocket 连接错误');
     };
 
-    ws.onclose = () => {
-      setStatus('🔌 连接断开');
-    };
+    ws.onclose = () => setStatus('🔌 连接断开');
   };
 
   const stop = () => {
     stopPCMStream();
     wsRef.current?.close();
-    audioContextRef.current?.close();
+    if (audioContextRef.current?.state !== 'closed') {
+      audioContextRef.current?.close();
+    }
     setStatus('🛑 识别已停止');
   };
 
