@@ -57,7 +57,7 @@ export default function LiveListener() {
 
   const translateAndSpeak = async (text: string) => {
     const triggerKeywords = [
-      'kayla', '凯拉', '卡拉', '卡', '开拉', '开啦', 'kaila', 'kela'
+      'kayla', '凯拉', '卡拉', '卡', '开拉', '开啦', 'kaila', 'kela','杀手'
     ];
 
     const lowerText = text.toLowerCase();
