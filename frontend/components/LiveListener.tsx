@@ -20,25 +20,53 @@ export default function LiveListener() {
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const lastTranslatedRef = useRef<string | null>(null);
-
-  // ✅ 用于识别是否稳定（连续 1.5 秒没有更新）
-  const stableTranscript = useRef('');
+  const policeHistory = useRef<string[]>([]); // ✅ 缓存最近三条警察英文
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const stableTranscript = useRef('');
 
   const handleTranscript = (incoming: string) => {
     if (incoming !== stableTranscript.current) {
       stableTranscript.current = incoming;
-
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
       timeoutRef.current = setTimeout(() => {
         console.log('⏸️ 触发稳定语音判断，翻译:', stableTranscript.current);
         translateAndSpeak(stableTranscript.current);
-      }, 1500); // ✅ 等 1.5 秒无更新再触发翻译
+      }, 1500);
+    }
+  };
+
+  const explainLastFewLines = async () => {
+    const contextLines = policeHistory.current.slice(-3);
+    if (contextLines.length === 0) return;
+
+    const context = contextLines.map((line) => `警察说: ${line}`).join('\n');
+
+    const res = await fetch(`${API_BASE}/api/explain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context }),
+    });
+
+    const data = await res.json();
+    if (data.explanation) {
+      enqueueSpeak(data.explanation);
+    } else {
+      enqueueSpeak('我不太确定他什么意思');
     }
   };
 
   const translateAndSpeak = async (text: string) => {
+    if (text.includes('没听懂')) {
+      console.log('🆘 用户请求 GPT 解释');
+      explainLastFewLines();
+      return;
+    }
+
+    policeHistory.current.push(text);
+    if (policeHistory.current.length > 3) {
+      policeHistory.current.shift();
+    }
+
     console.log('🎯 正在调用翻译函数，原始英文是：', text);
     try {
       const res = await fetch(`${API_BASE}/api/translateWhisperer`, {
@@ -53,7 +81,6 @@ export default function LiveListener() {
           console.log('⚠️ 跳过重复翻译:', result.zh);
           return;
         }
-
         lastTranslatedRef.current = result.zh;
         console.log('🈶 中文翻译成功：', result.zh);
         setTranslated((prev) => [...prev, result.zh]);
@@ -87,7 +114,7 @@ export default function LiveListener() {
 
       if (transcript?.trim()) {
         setLog((prev) => [...prev, transcript]);
-        handleTranscript(transcript); // ✅ 用稳定判断而非立即翻译
+        handleTranscript(transcript);
       }
     };
 
@@ -150,7 +177,6 @@ export default function LiveListener() {
   );
 }
 
-// ✅ 样式定义
 const boxStyle: React.CSSProperties = {
   marginTop: 12,
   padding: 16,
