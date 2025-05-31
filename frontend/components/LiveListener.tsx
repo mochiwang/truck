@@ -58,6 +58,7 @@ export default function LiveListener() {
       await explainLastFewLines();
       return;
     }
+      if (text.length < 6 || policeHistory.current.includes(text)) return;
 
     if (/[.?!]$/.test(text.trim())) {
       policeHistory.current.push(text.trim());
