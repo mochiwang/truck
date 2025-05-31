@@ -2,6 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { startPCMStream, stopPCMStream } from '../utils/startPCMStream';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_BACKEND || 'wss://speech-backend-xxxx.onrender.com';
+const API_BASE =
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  (process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : 'https://truck-backend.vercel.app');
 
 export default function LiveListener() {
   console.log('🚀 LiveListener 页面代码已加载！');
@@ -18,7 +23,7 @@ export default function LiveListener() {
     console.log('🎯 正在调用翻译函数，原始英文是：', text);
 
     try {
-      const res = await fetch('/api/translateWhisperer', {
+      const res = await fetch(`${API_BASE}/api/translateWhisperer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
