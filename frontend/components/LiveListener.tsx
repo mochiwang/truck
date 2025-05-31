@@ -46,29 +46,36 @@ export default function LiveListener() {
       });
 
       const data = await res.json();
-      if (data.summary) {
-        const summaryLine = data.summary
-          .split('\n')
-          .find((line: string) => line.startsWith('【总结】'));
-        enqueueSpeak(summaryLine ? summaryLine.replace('【总结】：', '').trim() : '我不太确定他什么意思');
-      } else {
-        enqueueSpeak('我不太确定他什么意思');
-      }
+      const summaryLine = data.summary
+        ?.split('\n')
+        .find((line: string) => line.startsWith('【总结】'));
+      enqueueSpeak(summaryLine ? summaryLine.replace('【总结】：', '').trim() : '我不太确定他什么意思');
     } catch (err) {
       enqueueSpeak('解释失败，请重试');
     }
   };
 
   const translateAndSpeak = async (text: string) => {
-    const isTrigger = ['没听懂', '没听清', '听不明白'].some((p) => text.includes(p));
+    const triggerKeywords = [
+      '没听懂',
+      '没听清',
+      '听不明白',
+      'mei ting dong',
+      'ting bu dong',
+      'tingbudong',
+      'mei ting dong le',
+    ];
+
+    const isTrigger = triggerKeywords.some((p) => text.toLowerCase().includes(p));
     if (isTrigger) {
+      console.log('🆘 触发 explain 总结逻辑');
       await explainLastFewLines();
       return;
     }
 
     if (text.length < 6 || policeHistory.current.includes(text)) return;
 
-    if (/[.?!]$/.test(text.trim())) {
+    if (/[.?!。？！]$/.test(text.trim())) {
       policeHistory.current.push(text.trim());
       if (policeHistory.current.length > 10) {
         policeHistory.current.shift();
