@@ -6,9 +6,10 @@ dotenv.config();
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
+// ✅ 设置 CORS 响应头
 function setCorsHeaders(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Origin', '*'); // 可按需限制域名
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
@@ -21,40 +22,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { recentTexts } = req.body;
 
   if (!Array.isArray(recentTexts) || recentTexts.length === 0) {
-    return res.status(400).json({ error: '参数 recentTexts 必须是非空字符串数组' });
+    return res.status(400).json({ error: 'recentTexts 必须是字符串数组' });
   }
 
+  // ✅ 文本清洗 + 保留最多 10 条
   const cleanTexts = recentTexts
     .map((t) => String(t).trim().replace(/\s+/g, ' ').slice(0, 200))
-    .slice(-10); // 限制最后 10 条，且每条最多 200 字符
+    .slice(-10);
 
   const prompt = `
-你是一名经验丰富的双语助理，现在我会提供几句英语对话，请你根据语境，判断说话人核心在表达什么。
+你是一个聪明、实用的 AI 助手，我会给你一段英语对话的片段，请你：
 
-请直接用简洁自然的中文，总结这段对话的意图或主要内容。不需要逐句翻译，也不需要添加任何“总结”前缀或格式化。
+1. 推测说话者大概想干什么（哪怕语义不完整，也请你主动推理）
+2. 用自然的三句话中文口语总结他们的意图和场景（别机械翻译）
+3. 如果能给出一句有帮助的提醒或下一步建议，也请顺便说一句
 
-句子如下：
-${cleanTexts.map((t, i) => `- ${t}`).join('\n')}
+不要解释你是谁，也不要重复我说的任务内容，直接输出三句话，像你陪伴在我身边一样。
+以下是对话内容：
+${cleanTexts.map((t, i) => `🗣 第 ${i + 1} 句：${t}`).join('\n')}
+
+请直接输出三句中文总结。
 `;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o', // 如需降低成本可改为 'gpt-3.5-turbo'
+      model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.2,
+      temperature: 0.5,
     });
 
-    const answer = completion.choices[0].message.content?.trim() || '';
+    const answer = completion.choices[0].message.content ?? '';
+    console.log('🧠 GPT 回答：\n', answer);
 
-    // 保底兜底处理
-    const summary =
-      answer.length < 3
-        ? '对方表达不清，请再听一遍'
-        : answer.split('\n')[0].replace(/^【?总结】?[:：]?\s*/i, '').trim();
-
-    return res.status(200).json({ summary });
+    res.status(200).json({ summary: answer.trim() });
   } catch (err) {
     console.error('❌ GPT explain 调用失败:', err);
-    return res.status(500).json({ error: 'GPT explain failed' });
+    res.status(500).json({ error: 'GPT explain failed' });
   }
 }
