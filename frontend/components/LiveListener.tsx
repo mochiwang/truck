@@ -9,15 +9,15 @@ const API_BASE =
     ? 'http://localhost:3000'
     : 'https://truck-backend.vercel.app');
 
-// ✅ 短词优先收录的警察口令关键词（小写）
+// ✅ 警察常见关键词（用于优先记录）
 const PRIORITY_PHRASES = [
   'stop', 'pull over', 'license', 'registration',
   'insurance', 'step out', 'wait', 'hands', 'open the door',
   'slow down', 'speeding', 'turn off the engine',
 ];
 
-// ✅ "China" 唤醒关键词（中英文混合）
-const CHINA_KEYWORDS = ['china', '中国', '瓷器', '拆那', 'chyna', 'chai na'];
+// ✅ 唤醒关键词改为“贾维斯”
+const JARVIS_KEYWORDS = ['贾维斯', 'jarvis', 'jiaweis', 'jia vis', '假维斯', '家务事'];
 
 export default function LiveListener() {
   const [status, setStatus] = useState('⏳ 等待开始识别...');
@@ -46,7 +46,12 @@ export default function LiveListener() {
 
   const explainLastFewLines = async () => {
     const contextLines = policeHistory.current.slice(-3);
-    if (contextLines.length === 0) return;
+    console.log('[🧠 警察历史记录]', policeHistory.current);
+
+    if (contextLines.length === 0) {
+      enqueueSpeak('我没听清楚前面说了什么');
+      return;
+    }
 
     try {
       const res = await fetch(`${API_BASE}/api/explain`, {
@@ -67,17 +72,17 @@ export default function LiveListener() {
 
   const translateAndSpeak = async (text: string) => {
     const lower = text.toLowerCase();
-    const isChinaTrigger = CHINA_KEYWORDS.some(k => lower.includes(k));
-    console.log('[🎯 trigger check] transcript:', text, '→ matched:', isChinaTrigger);
+    const isJarvisTrigger = JARVIS_KEYWORDS.some(k => lower.includes(k));
+    console.log('[🎯 trigger check] transcript:', text, '→ matched:', isJarvisTrigger);
 
-    if (isChinaTrigger) {
-      console.log('🆘 触发 China 总结逻辑');
+    if (isJarvisTrigger) {
+      console.log('🆘 触发 Jarvis 总结逻辑');
       await explainLastFewLines();
       return;
     }
 
-    const isImportantPhrase = PRIORITY_PHRASES.some(p => lower.includes(p));
-    if ((text.length > 6 || isImportantPhrase) && !policeHistory.current.includes(text)) {
+    // ✅ 所有非空句子都记录
+    if (text.trim() && !policeHistory.current.includes(text)) {
       policeHistory.current.push(text.trim());
       if (policeHistory.current.length > 10) {
         policeHistory.current.shift();
