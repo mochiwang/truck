@@ -21,7 +21,9 @@ export default function HomePage() {
       </div>
 
       <div style={styles.centerArea}>
-        <div style={styles.circle} onClick={handleStart}></div>
+        <div style={styles.circleWrapper} onClick={handleStart}>
+          <div style={styles.circle}></div>
+        </div>
       </div>
     </div>
   );
@@ -59,15 +61,22 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  circle: {
+  circleWrapper: {
     width: 400,
     height: 400,
     borderRadius: '50%',
-    backgroundImage: 'url("/assets/whisperer-circle.png")',
-    backgroundSize: 'contain', // ✅ 保持图形完整显示
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'center',
-    cursor: 'pointer',
+    overflow: 'hidden',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
     boxShadow: '0 0 60px rgba(255, 215, 100, 0.4)',
+    cursor: 'pointer',
+  },
+  circle: {
+    width: 600,
+    height: 600,
+    backgroundImage: 'url("/assets/whisperer-circle.png")',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
   },
 };
