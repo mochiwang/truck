@@ -21,24 +21,22 @@ export default function HomePage() {
       </div>
 
       <div style={styles.centerArea}>
-        <div style={styles.circle} onClick={handleStart}>
-          <span style={styles.circleText}>启动</span>
-        </div>
+        <div style={styles.circle} onClick={handleStart}></div>
       </div>
     </div>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles = {
   container: {
     backgroundColor: '#0d0c0f',
     height: '100vh',
     width: '100vw',
-    position: 'relative',
+    position: 'relative' as const,
     fontFamily: 'sans-serif',
   },
   navbar: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: 20,
     left: 20,
     right: 20,
@@ -50,7 +48,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
   },
   menuIcon: {
     cursor: 'pointer',
@@ -62,16 +60,14 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
   },
   circle: {
-    width: 220,
-    height: 220,
+    width: 400,
+    height: 400,
     borderRadius: '50%',
     backgroundImage: 'url("/assets/whisperer-circle.png")',
-    backgroundSize: 'cover',
+    backgroundSize: 'contain', // ✅ 保持图形完整显示
+    backgroundRepeat: 'no-repeat',
     backgroundPosition: 'center',
     cursor: 'pointer',
-    boxShadow: '0 0 30px rgba(255, 215, 100, 0.4)',
-  },
-  circleText: {
-    display: 'none',
+    boxShadow: '0 0 60px rgba(255, 215, 100, 0.4)',
   },
 };
