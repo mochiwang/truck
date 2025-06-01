@@ -9,14 +9,12 @@ const API_BASE =
     ? 'http://localhost:3000'
     : 'https://truck-backend.vercel.app');
 
-// ✅ 警察常见关键词（用于优先记录）
 const PRIORITY_PHRASES = [
   'stop', 'pull over', 'license', 'registration',
   'insurance', 'step out', 'wait', 'hands', 'open the door',
   'slow down', 'speeding', 'turn off the engine',
 ];
 
-// ✅ 唤醒关键词改为“贾维斯”
 const JARVIS_KEYWORDS = [
   'jarvis', '贾维斯', '假维斯', '家务事',
   'jiaweis', 'jia vis', 'javis', 'java s',
@@ -66,12 +64,8 @@ export default function LiveListener() {
       });
 
       const data = await res.json();
-
       const raw = data.summary ?? '';
-      const cleaned = raw
-        .replace(/^【?总结】?[:：]?\s*/i, '')
-        .trim();
-
+      const cleaned = raw.replace(/^【?总结】?[:：]?\s*/i, '').trim();
       const final = cleaned.length < 4
         ? '他可能在表达一些请求或问题'
         : cleaned;
@@ -86,9 +80,9 @@ export default function LiveListener() {
   const translateAndSpeak = async (text: string) => {
     const lower = text.toLowerCase();
     const isJarvisTrigger = new RegExp(
-  JARVIS_KEYWORDS.map(w => w.replace(/\s+/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'),
-  'i'
-).test(lower.replace(/\s+/g, ''));
+      JARVIS_KEYWORDS.map(w => w.replace(/\s+/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'),
+      'i'
+    ).test(lower.replace(/\s+/g, ''));
 
     console.log('[🎯 trigger check] transcript:', text, '→ matched:', isJarvisTrigger);
 
@@ -98,12 +92,9 @@ export default function LiveListener() {
       return;
     }
 
-    // ✅ 所有非空句子都记录
     if (text.trim() && !policeHistory.current.includes(text.trim())) {
       policeHistory.current.push(text.trim());
-      if (policeHistory.current.length > 10) {
-        policeHistory.current.shift();
-      }
+      if (policeHistory.current.length > 10) policeHistory.current.shift();
     }
 
     try {
@@ -117,7 +108,7 @@ export default function LiveListener() {
       if (result?.zh) {
         if (lastTranslatedRef.current === result.zh) return;
         lastTranslatedRef.current = result.zh;
-        setTranslated((prev) => [...prev, result.zh]);
+        setTranslated(prev => [...prev, result.zh]);
         enqueueSpeak(result.zh);
       }
     } catch {}
@@ -142,31 +133,22 @@ export default function LiveListener() {
         transcript = event.data;
       }
 
-      if (transcript?.trim()) {
-        handleTranscript(transcript);
-      }
+      if (transcript?.trim()) handleTranscript(transcript);
     };
 
-    ws.onerror = () => {
-      setStatus('❌ WebSocket 连接错误');
-    };
-
+    ws.onerror = () => setStatus('❌ WebSocket 连接错误');
     ws.onclose = () => setStatus('🔌 连接断开');
   };
 
   const stop = () => {
     stopPCMStream();
     wsRef.current?.close();
-    if (audioContextRef.current?.state !== 'closed') {
-      audioContextRef.current?.close();
-    }
+    if (audioContextRef.current?.state !== 'closed') audioContextRef.current?.close();
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setStatus('🛑 识别已停止');
   };
 
-  useEffect(() => {
-    return () => stop();
-  }, []);
+  useEffect(() => () => stop(), []);
 
   return (
     <div style={{ marginTop: 20 }}>
