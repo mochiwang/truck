@@ -62,14 +62,13 @@ const styles = {
     alignItems: 'center',
   },
   circleWrapper: {
-    width: 400,
-    height: 400,
+    width: 380,
+    height: 380,
+    overflow: 'hidden' as const,
     borderRadius: '50%',
-    overflow: 'hidden',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    boxShadow: '0 0 60px rgba(255, 215, 100, 0.4)',
     cursor: 'pointer',
   },
   circle: {
@@ -77,6 +76,7 @@ const styles = {
     height: 600,
     backgroundImage: 'url("/assets/whisperer-circle.png")',
     backgroundSize: 'cover',
+    backgroundRepeat: 'no-repeat',
     backgroundPosition: 'center',
   },
 };
