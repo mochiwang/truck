@@ -17,7 +17,12 @@ const PRIORITY_PHRASES = [
 ];
 
 // ✅ 唤醒关键词改为“贾维斯”
-const JARVIS_KEYWORDS = ['贾维斯', 'jarvis', 'jiaweis', 'jia vis', '假维斯', '家务事'];
+const JARVIS_KEYWORDS = [
+  'jarvis', '贾维斯', '假维斯', '家务事',
+  'jiaweis', 'jia vis', 'javis', 'java s',
+  'service', 'jervis', 'jer vis', '杰维斯',
+  '加我说', '叫我说', '家里事', '驾驶',
+];
 
 export default function LiveListener() {
   const [status, setStatus] = useState('⏳ 等待开始识别...');
@@ -80,7 +85,11 @@ export default function LiveListener() {
 
   const translateAndSpeak = async (text: string) => {
     const lower = text.toLowerCase();
-    const isJarvisTrigger = JARVIS_KEYWORDS.some(k => lower.includes(k));
+    const isJarvisTrigger = new RegExp(
+  JARVIS_KEYWORDS.map(w => w.replace(/\s+/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'),
+  'i'
+).test(lower.replace(/\s+/g, ''));
+
     console.log('[🎯 trigger check] transcript:', text, '→ matched:', isJarvisTrigger);
 
     if (isJarvisTrigger) {
