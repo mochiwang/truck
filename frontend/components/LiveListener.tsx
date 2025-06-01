@@ -61,12 +61,20 @@ export default function LiveListener() {
       });
 
       const data = await res.json();
-      const summaryLine = data.summary
-        ?.split('\n')
-        .find((line: string) => line.startsWith('【总结】'));
-      enqueueSpeak(summaryLine ? summaryLine.replace('【总结】：', '').trim() : '我不太确定他什么意思');
+
+      const raw = data.summary ?? '';
+      const cleaned = raw
+        .replace(/^【?总结】?[:：]?\s*/i, '')
+        .trim();
+
+      const final = cleaned.length < 4
+        ? '他可能在表达一些请求或问题'
+        : cleaned;
+
+      enqueueSpeak(final);
     } catch (err) {
-      enqueueSpeak('解释失败，请重试');
+      console.error('❌ 获取 GPT 总结失败:', err);
+      enqueueSpeak('解释失败，请稍后重试');
     }
   };
 
@@ -82,7 +90,7 @@ export default function LiveListener() {
     }
 
     // ✅ 所有非空句子都记录
-    if (text.trim() && !policeHistory.current.includes(text)) {
+    if (text.trim() && !policeHistory.current.includes(text.trim())) {
       policeHistory.current.push(text.trim());
       if (policeHistory.current.length > 10) {
         policeHistory.current.shift();
