@@ -8,7 +8,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 // ✅ 设置 CORS 响应头
 function setCorsHeaders(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*'); // 可替换为特定域名
+  res.setHeader('Access-Control-Allow-Origin', '*'); // 可替换为你的域名
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
@@ -30,15 +30,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'recentTexts 必须是字符串数组' });
   }
 
+  // ✅ 清洗与限制文本长度
   const cleanTexts = recentTexts
     .map((t) => String(t).trim().replace(/\s+/g, ' ').slice(0, 200))
-    .slice(-10); // 最多保留 10 条
+    .slice(-10); // 最多取最近 10 条
 
   const prompt = `
-以下是一段英文对话的部分片段，请根据这些句子总结说话者的核心意图。
-即使语句不完整或表达含糊，也请你根据语境进行合理推测。
+你将看到几句英文对话片段，这些句子可能来自实际交流场景，也可能不太连贯。
 
-直接给出一句简洁的中文总结，不需要逐句翻译。尽量用贴近日常口语的表达方式，不要说“我不确定”或“无法判断”。
+请你根据这些内容，尽可能推测说话者的主要意图，用一句自然、简洁的中文进行总结。
+
+- 不要求逐句翻译，只需总结核心含义；
+- 即使语句破碎、语法错误，也请你根据常识大胆推测；
+- 如果意思不明确，也请给出模糊但合理的总结，例如“对方可能在说明个人情况”或“他可能在表达一个请求”；
+- 不要输出“我不确定”或“无法判断”。
 
 句子如下：
 ${cleanTexts.map((t, i) => `句子${i + 1}：${t}`).join('\n')}
@@ -54,10 +59,11 @@ ${cleanTexts.map((t, i) => `句子${i + 1}：${t}`).join('\n')}
     });
 
     const answer = completion.choices[0].message.content ?? '';
-    console.log('🧠 GPT 原始回答：\n', answer);
+    console.log('🧠 GPT 返回内容：\n', answer);
 
-    const match = answer.match(/【总结】[:：](.+)/);
-    const summary = match?.[1]?.trim() || '内容含糊，请仔细听清对方说的话。';
+    // ✅ 正则提取总结内容（兼容中文冒号与换行）
+    const match = answer.match(/【总结】[:：]?\s*(.+)/);
+    const summary = match?.[1]?.trim() || '对方可能在表达一些请求或说明自己的情况。';
 
     res.status(200).json({ summary });
   } catch (err) {
