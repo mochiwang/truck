@@ -3,69 +3,70 @@ import { OpenAI } from 'openai';
 import dotenv from 'dotenv';
 
 dotenv.config();
-
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-// ✅ 设置 CORS 响应头
 function setCorsHeaders(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*'); // 可替换为你的域名
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
+function cleanLine(line: string): string {
+  return line
+    .replace(/\b(uh+|um+|hmm+|you know|like)\b/gi, '')  // 去除语气词
+    .replace(/\b(\w+)\s+\1\b/gi, '$1') // 合并重复单词
+    .replace(/\s{2,}/g, ' ') // 多空格压缩
+    .trim();
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   const { recentTexts } = req.body;
-
   if (!Array.isArray(recentTexts) || recentTexts.length === 0) {
     return res.status(400).json({ error: 'recentTexts 必须是字符串数组' });
   }
 
-  // ✅ 清洗与限制文本长度
   const cleanTexts = recentTexts
-    .map((t) => String(t).trim().replace(/\s+/g, ' ').slice(0, 200))
-    .slice(-10); // 最多取最近 10 条
+    .map(t => cleanLine(String(t)).slice(0, 200))
+    .filter(Boolean)
+    .slice(-10); // 最多 10 条
 
-  const prompt = `
-你将看到几句英文对话片段，这些句子可能来自实际交流场景，也可能不太连贯。
+  const joined = cleanTexts.map((t, i) => `句子${i + 1}：${t}`).join('\n');
 
-请你根据这些内容，尽可能推测说话者的主要意图，用一句自然、简洁的中文进行总结。
+  const systemPrompt = `
+你是一个善于理解人类口语、总结混乱句子核心意图的中文助手。
+你擅长从重复、语病、停顿词中提炼出真实的需求，并用自然简洁的中文总结出来。
+`;
 
-- 不要求逐句翻译，只需总结核心含义；
-- 即使语句破碎、语法错误，也请你根据常识大胆推测；
-- 如果意思不明确，也请给出模糊但合理的总结，例如“对方可能在说明个人情况”或“他可能在表达一个请求”；
-- 不要输出“我不确定”或“无法判断”。
+  const userPrompt = `
+以下是几句口语表达（来自语音识别），它们可能断断续续或语病较多。请你根据上下文推断，说话者的主要意图，用一句中文总结即可。
+如果内容仍模糊，也请你尝试给出合理猜测，不要输出“我不确定”或“无法判断”。
 
-句子如下：
-${cleanTexts.map((t, i) => `句子${i + 1}：${t}`).join('\n')}
+${joined}
 
-【总结】：
+请输出总结：
 `;
 
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.3
     });
 
     const answer = completion.choices[0].message.content ?? '';
-    console.log('🧠 GPT 返回内容：\n', answer);
+    console.log('🧠 GPT 原始回答：\n', answer);
 
-    // ✅ 正则提取总结内容（兼容中文冒号与换行）
-    const match = answer.match(/【总结】[:：]?\s*(.+)/);
-    const summary = match?.[1]?.trim() || '对方可能在表达一些请求或说明自己的情况。';
+    const summary = answer.trim().replace(/^【?总结】?[:：]?\s*/i, '');
+    const finalSummary = summary.length < 4 ? '对方可能在请求帮助或表达一个需求。' : summary;
 
-    res.status(200).json({ summary });
+    res.status(200).json({ summary: finalSummary });
   } catch (err) {
     console.error('❌ GPT explain 调用失败:', err);
     res.status(500).json({ error: 'GPT explain failed' });
