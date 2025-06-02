@@ -27,9 +27,8 @@ type LiveListenerProps = {
 };
 
 export default function LiveListener({ onStop }: LiveListenerProps) {
-  const [status, setStatus] = useState('🎙️ 正在监听...');
+  const [status, setStatus] = useState('🎙️ 正在识别中...');
   const [translated, setTranslated] = useState<string[]>([]);
-  const [listening, setListening] = useState(true);
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -153,48 +152,51 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
   }, []);
 
   return (
-    <div style={{ marginTop: 20 }}>
-      <div style={badgeStyle(status)}>{status}</div>
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'white'
+    }}>
+      <p style={{ marginTop: 10, fontSize: 18, color: '#ccc' }}>{status}</p>
 
-      <div style={boxStyleAlt}>
-        <strong>中文翻译：</strong>
-        {translated.length === 0 ? '🈳 正在准备翻译…' : translated.join('\n')}
+      <div style={{
+        width: 200,
+        height: 200,
+        borderRadius: '50%',
+        backgroundImage: 'url(/assets/whisperer-circle.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        marginTop: 20,
+        marginBottom: 30,
+        boxShadow: '0 0 60px 15px rgba(255, 100, 0, 0.4)'
+      }} />
+
+      <button onClick={stop} style={{
+        backgroundColor: '#f44336',
+        color: 'white',
+        padding: '12px 24px',
+        borderRadius: 12,
+        border: 'none',
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 30,
+        cursor: 'pointer'
+      }}>⏹️ 停止识别</button>
+
+      <div style={{
+        backgroundColor: '#222',
+        borderRadius: 12,
+        padding: '16px 24px',
+        maxWidth: 600,
+        width: '90%',
+        fontSize: 16,
+        color: '#eee',
+        whiteSpace: 'pre-line'
+      }}>
+        {translated.length === 0 ? '⏳ 正在准备翻译...' : translated.join('\n')}
       </div>
+
+      <p style={{ fontSize: 13, marginTop: 20, color: '#888' }}>
+        该话请继续，系统会实时显示英文识别结果。
+      </p>
     </div>
   );
 }
-
-const boxStyleAlt: React.CSSProperties = {
-  marginTop: 12,
-  padding: 16,
-  background: '#fdfdfd',
-  border: '1px solid #ddd',
-  borderRadius: 6,
-  width: '80%',
-  maxWidth: 600,
-  margin: '0 auto',
-  textAlign: 'left',
-  fontSize: 16,
-  minHeight: 100,
-  whiteSpace: 'pre-line',
-};
-
-const badgeStyle = (status: string): React.CSSProperties => {
-  let bg = '#aaa';
-  if (status.includes('🎙️')) bg = '#4caf50';
-  else if (status.includes('❌')) bg = '#f44336';
-  else if (status.includes('🔌')) bg = '#ff9800';
-  else if (status.includes('⏳')) bg = '#2196f3';
-  else if (status.includes('🛑')) bg = '#9e9e9e';
-
-  return {
-    backgroundColor: bg,
-    color: '#fff',
-    padding: '8px 16px',
-    borderRadius: 8,
-    display: 'inline-block',
-    marginBottom: 12,
-    fontWeight: 'bold',
-    fontSize: 16,
-  };
-};
