@@ -1,0 +1,68 @@
+.fullscreen-menu-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85); /* 半透明背景 */
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.fullscreen-menu-content {
+  display: flex;
+  flex-direction: column; /* ✅ 垂直排列 */
+  align-items: center;     /* ✅ 居中对齐 */
+  text-align: center;
+  animation: dropDown 0.4s ease-out forwards;
+}
+
+.fullscreen-menu-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  margin: 0.5rem 0; /* ✅ 上下间隔 */
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.fullscreen-menu-button:hover {
+  transform: scale(1.05);
+}
+
+.fade-in {
+  opacity: 0;
+  animation: fadeInUp 0.4s ease forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dropDown {
+  from {
+    transform: translateY(-10%);
+  }
+  to {
+    transform: translateY(0%);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

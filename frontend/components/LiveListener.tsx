@@ -22,10 +22,14 @@ const JARVIS_KEYWORDS = [
   '加我说', '叫我说', '家里事', '驾驶',
 ];
 
-export default function LiveListener() {
-  const [status, setStatus] = useState('⏳ 等待开始识别...');
+type LiveListenerProps = {
+  onStop?: () => void;
+};
+
+export default function LiveListener({ onStop }: LiveListenerProps) {
+  const [status, setStatus] = useState('🎙️ 正在监听...');
   const [translated, setTranslated] = useState<string[]>([]);
-  const [listening, setListening] = useState(false);
+  const [listening, setListening] = useState(true);
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -49,8 +53,6 @@ export default function LiveListener() {
 
   const explainLastFewLines = async () => {
     const contextLines = policeHistory.current.slice(-3);
-    console.log('[🧠 警察历史记录]', policeHistory.current);
-
     if (contextLines.length === 0) {
       enqueueSpeak('我没听清楚前面说了什么');
       return;
@@ -72,7 +74,6 @@ export default function LiveListener() {
 
       enqueueSpeak(final);
     } catch (err) {
-      console.error('❌ 获取 GPT 总结失败:', err);
       enqueueSpeak('解释失败，请稍后重试');
     }
   };
@@ -84,10 +85,7 @@ export default function LiveListener() {
       'i'
     ).test(lower.replace(/\s+/g, ''));
 
-    console.log('[🎯 trigger check] transcript:', text, '→ matched:', isJarvisTrigger);
-
     if (isJarvisTrigger) {
-      console.log('🆘 触发 Jarvis 总结逻辑');
       await explainLastFewLines();
       return;
     }
@@ -146,32 +144,16 @@ export default function LiveListener() {
     if (audioContextRef.current?.state !== 'closed') audioContextRef.current?.close();
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setStatus('🛑 识别已停止');
+    if (onStop) onStop();
   };
 
-  useEffect(() => () => stop(), []);
+  useEffect(() => {
+    start();
+    return () => stop();
+  }, []);
 
   return (
     <div style={{ marginTop: 20 }}>
-      <button
-        onClick={() => {
-          if (listening) stop();
-          else start();
-          setListening(!listening);
-        }}
-        style={{
-          padding: '10px 20px',
-          backgroundColor: listening ? '#f44336' : '#4caf50',
-          color: 'white',
-          border: 'none',
-          borderRadius: 6,
-          marginBottom: 16,
-          fontSize: 16,
-          cursor: 'pointer',
-        }}
-      >
-        {listening ? '🛑 停止识别' : '🎤 开始识别'}
-      </button>
-
       <div style={badgeStyle(status)}>{status}</div>
 
       <div style={boxStyleAlt}>

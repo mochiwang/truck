@@ -1,30 +1,32 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { Menu } from 'lucide-react';
+import SideMenu from '../components/SideMenu';
+import { checkMicPermissionAndNavigate } from '../utils/permissions'; // ✅ 新增引入
 
 export default function HomePage() {
   const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleStart = () => {
-    router.push('/whisperer');
-  };
-
-  const handleMenu = () => {
-    router.push('/menu');
+    checkMicPermissionAndNavigate(router); // ✅ 替代原来 try-catch 请求
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.navbar}>
         <span style={styles.title}>Whisperer</span>
-        <Menu size={28} color="#fff" style={styles.menuIcon} onClick={handleMenu} />
+        <Menu size={28} color="#fff" style={styles.menuIcon} onClick={() => setMenuOpen(true)} />
       </div>
 
       <div style={styles.centerArea}>
         <div style={styles.circleWrapper} onClick={handleStart}>
+          <div style={styles.glow}></div>
           <div style={styles.circle}></div>
         </div>
       </div>
+
+      {menuOpen && <SideMenu onClose={() => setMenuOpen(false)} />}
     </div>
   );
 }
@@ -70,13 +72,25 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     cursor: 'pointer',
+    position: 'relative' as const,
   },
-  circle: {
+  glow: {
+    position: 'absolute' as const,
     width: 600,
     height: 600,
+    borderRadius: '50%',
+    backgroundImage: 'url("/assets/whisperer-glow.png")',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    zIndex: 0,
+  },
+  circle: {
+    width: 500,
+    height: 500,
     backgroundImage: 'url("/assets/whisperer-circle.png")',
     backgroundSize: 'cover',
     backgroundRepeat: 'no-repeat',
     backgroundPosition: 'center',
+    zIndex: 1,
   },
 };
