@@ -46,7 +46,7 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
         if (stableTranscript.current === prevTranscript.current) return;
         prevTranscript.current = stableTranscript.current;
         translateAndSpeak(stableTranscript.current);
-      }, 1500);
+      }, 1000);
     }
   };
 
