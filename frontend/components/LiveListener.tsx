@@ -41,30 +41,34 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
   const hasSpoken = useRef(false); // ✅ 是否已识别过首句
 
 const handleTranscript = (incoming: string) => {
-  if (incoming !== stableTranscript.current) {
-    stableTranscript.current = incoming;
+  const current = incoming.trim();
+  const previous = stableTranscript.current.trim();
+
+  if (current && current !== previous) {
+    stableTranscript.current = current;
 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
     timeoutRef.current = setTimeout(() => {
       if (stableTranscript.current === prevTranscript.current) return;
 
-      // ✅ 核心逻辑：只要出现了结束语气（. ? !）就清空之前缓存
-      const ended = /[.?!。？！]$/.test(stableTranscript.current.trim());
+      const isNewSentence =
+        /[.?!。？！]$/.test(current) || // 句尾标点
+        current.length - previous.length > Math.max(6, previous.length * 0.3); // 增幅明显
 
-      if (ended) {
-        bufferedSegments.current = []; // ✅ 清空缓存
+      if (isNewSentence) {
+        bufferedSegments.current = []; // ✅ 是新句，清空缓存
       }
 
-      prevTranscript.current = stableTranscript.current;
+      prevTranscript.current = current;
+      bufferedSegments.current.push(current);
 
-      // ✅ 永远只用最后 3 句缓冲，防止越堆越长
-      bufferedSegments.current.push(stableTranscript.current);
       const recent = bufferedSegments.current.slice(-3).join(' ');
       translateAndSpeak(recent);
     }, 1000);
   }
 };
+
 
 
   const explainLastFewLines = async () => {
