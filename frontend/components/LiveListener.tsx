@@ -40,27 +40,30 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
   const bufferedSegments = useRef<string[]>([]);
   const hasSpoken = useRef(false); // ✅ 是否已识别过首句
 
-  const handleTranscript = (incoming: string) => {
-    if (incoming !== stableTranscript.current) {
-      stableTranscript.current = incoming;
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => {
-        if (stableTranscript.current === prevTranscript.current) return;
-        prevTranscript.current = stableTranscript.current;
+const handleTranscript = (incoming: string) => {
+  if (incoming !== stableTranscript.current) {
+    stableTranscript.current = incoming;
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-        bufferedSegments.current.push(stableTranscript.current);
-        const recent = bufferedSegments.current.slice(-3).join(' ');
+    timeoutRef.current = setTimeout(() => {
+      if (stableTranscript.current === prevTranscript.current) return;
 
-        // ✅ 首句识别立即缓存（防丢失）但延迟触发翻译
-        if (!hasSpoken.current) {
-          hasSpoken.current = true;
-          setTimeout(() => translateAndSpeak(recent), 800);
-        } else {
-          translateAndSpeak(recent);
-        }
-      }, 800);
-    }
-  };
+      // ✅ 清理机制：如果变化很大，清空缓存（避免旧语句污染新语句）
+      const isMajorUpdate =
+        stableTranscript.current.split(' ').length < 4 ||
+        !stableTranscript.current.includes(prevTranscript.current || '');
+
+      if (isMajorUpdate) {
+        bufferedSegments.current = [];
+      }
+
+      prevTranscript.current = stableTranscript.current;
+      bufferedSegments.current.push(stableTranscript.current);
+      const recent = bufferedSegments.current.slice(-3).join(' ');
+      translateAndSpeak(recent);
+    }, 1000);
+  }
+};
 
   const explainLastFewLines = async () => {
     const contextLines = policeHistory.current.slice(-3);
