@@ -33,30 +33,21 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const lastTranslatedRef = useRef<string | null>(null);
-  const lastFlushedTranscript = useRef<string>('');
   const policeHistory = useRef<string[]>([]);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const stableTranscript = useRef('');
   const prevTranscript = useRef<string | null>(null);
 
   const handleTranscript = (incoming: string) => {
-    const current = incoming.trim();
-    if (!current || current === stableTranscript.current) return;
-
-    stableTranscript.current = current;
-
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      if (stableTranscript.current === prevTranscript.current) return;
-
-      const isSentenceEnd = /[.?!。？！]$/.test(current);
-      if (isSentenceEnd && current !== lastFlushedTranscript.current) {
-        lastFlushedTranscript.current = current;
-        translateAndSpeak(current);
-      }
-
-      prevTranscript.current = current;
-    }, 800);
+    if (incoming !== stableTranscript.current) {
+      stableTranscript.current = incoming;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        if (stableTranscript.current === prevTranscript.current) return;
+        prevTranscript.current = stableTranscript.current;
+        translateAndSpeak(stableTranscript.current);
+      }, 1000);
+    }
   };
 
   const explainLastFewLines = async () => {
