@@ -37,7 +37,8 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const stableTranscript = useRef('');
   const prevTranscript = useRef<string | null>(null);
-  const bufferedSegments = useRef<string[]>([]); // ✅ 新增缓存
+  const bufferedSegments = useRef<string[]>([]);
+  const hasSpoken = useRef(false); // ✅ 是否已识别过首句
 
   const handleTranscript = (incoming: string) => {
     if (incoming !== stableTranscript.current) {
@@ -49,8 +50,15 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
 
         bufferedSegments.current.push(stableTranscript.current);
         const recent = bufferedSegments.current.slice(-3).join(' ');
-        translateAndSpeak(recent);
-      }, 1000);
+
+        // ✅ 首句识别立即缓存（防丢失）但延迟触发翻译
+        if (!hasSpoken.current) {
+          hasSpoken.current = true;
+          setTimeout(() => translateAndSpeak(recent), 800);
+        } else {
+          translateAndSpeak(recent);
+        }
+      }, 800);
     }
   };
 
@@ -70,7 +78,7 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
 
       const data = await res.json();
       const raw = data.summary ?? '';
-      const cleaned = raw.replace(/^【?总结】?[:：]?\s*/i, '').trim();
+      const cleaned = raw.replace(/^【?总结】?[:：]?/i, '').trim();
       const final = cleaned.length < 4
         ? '他可能在表达一些请求或问题'
         : cleaned;
