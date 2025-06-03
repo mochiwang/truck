@@ -33,43 +33,31 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const lastTranslatedRef = useRef<string | null>(null);
+  const lastFlushedTranscript = useRef<string>('');
   const policeHistory = useRef<string[]>([]);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const stableTranscript = useRef('');
   const prevTranscript = useRef<string | null>(null);
-  const bufferedSegments = useRef<string[]>([]);
-  const hasSpoken = useRef(false); // ✅ 是否已识别过首句
 
-const handleTranscript = (incoming: string) => {
-  const current = incoming.trim();
-  const previous = stableTranscript.current.trim();
+  const handleTranscript = (incoming: string) => {
+    const current = incoming.trim();
+    if (!current || current === stableTranscript.current) return;
 
-  if (current && current !== previous) {
     stableTranscript.current = current;
 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
     timeoutRef.current = setTimeout(() => {
       if (stableTranscript.current === prevTranscript.current) return;
 
-      const isNewSentence =
-        /[.?!。？！]$/.test(current) || // 句尾标点
-        current.length - previous.length > Math.max(6, previous.length * 0.3); // 增幅明显
-
-      if (isNewSentence) {
-        bufferedSegments.current = []; // ✅ 是新句，清空缓存
+      const isSentenceEnd = /[.?!。？！]$/.test(current);
+      if (isSentenceEnd && current !== lastFlushedTranscript.current) {
+        lastFlushedTranscript.current = current;
+        translateAndSpeak(current);
       }
 
       prevTranscript.current = current;
-      bufferedSegments.current.push(current);
-
-      const recent = bufferedSegments.current.slice(-3).join(' ');
-      translateAndSpeak(recent);
-    }, 1000);
-  }
-};
-
-
+    }, 800);
+  };
 
   const explainLastFewLines = async () => {
     const contextLines = policeHistory.current.slice(-3);
@@ -87,7 +75,7 @@ const handleTranscript = (incoming: string) => {
 
       const data = await res.json();
       const raw = data.summary ?? '';
-      const cleaned = raw.replace(/^【?总结】?[:：]?/i, '').trim();
+      const cleaned = raw.replace(/^【?总结】?[:：]?\s*/i, '').trim();
       const final = cleaned.length < 4
         ? '他可能在表达一些请求或问题'
         : cleaned;
