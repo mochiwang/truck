@@ -1,9 +1,13 @@
 // backend/api/translateWhisperer.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import dotenv from 'dotenv';
-import fetch from 'node-fetch';
+import { OpenAI } from 'openai';
 
 dotenv.config();
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+});
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -25,30 +29,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY!;
-    const url = `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`;
+    const prompt = `你是一个中英翻译助手，请将下列英文翻译为通顺自然的中文，不要遗漏、不做臆测。\n英文原文：${text}`;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        q: text,
-        source: 'en',
-        target: 'zh-CN',
-        format: 'text'
-      })
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: '你是一个中英翻译助手。' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.3,
     });
 
-    const data = await response.json();
+    const zh = completion.choices?.[0]?.message?.content?.trim();
+    if (!zh) throw new Error('GPT returned empty content');
 
-    if (!data?.data?.translations?.[0]?.translatedText) {
-      throw new Error('Invalid Google Translate response');
-    }
-
-    const zh = data.data.translations[0].translatedText;
     return res.status(200).json({ zh });
   } catch (err) {
-    console.error('[Google Translate Error]', err);
+    console.error('[GPT Translate Error]', err);
     return res.status(500).json({ error: 'Translation failed' });
   }
 }

@@ -2,28 +2,38 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { Menu } from 'lucide-react';
 import SideMenu from '../components/SideMenu';
-import { checkMicPermissionAndNavigate } from '../utils/permissions'; // ✅ 新增引入
+import { checkMicPermissionAndNavigate } from '../utils/permissions';
 
 export default function HomePage() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // ✅ 新增 loading 状态
 
   const handleStart = () => {
-    checkMicPermissionAndNavigate(router); // ✅ 替代原来 try-catch 请求
+    checkMicPermissionAndNavigate(router, setIsLoading); // ✅ 传入 setLoading
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.navbar}>
         <span style={styles.title}>Whisperer</span>
-        <Menu size={28} color="#fff" style={styles.menuIcon} onClick={() => setMenuOpen(true)} />
+        <Menu
+          size={28}
+          color="#fff"
+          style={styles.menuIcon}
+          onClick={() => setMenuOpen(true)}
+        />
       </div>
 
       <div style={styles.centerArea}>
-        <div style={styles.circleWrapper} onClick={handleStart}>
-          <div style={styles.glow}></div>
-          <div style={styles.circle}></div>
-        </div>
+        {isLoading ? (
+          <p style={{ color: 'white', fontSize: 18 }}>🎧 正在准备麦克风，请稍候...</p>
+        ) : (
+          <div style={styles.circleWrapper} onClick={handleStart}>
+            <div style={styles.glow}></div>
+            <div style={styles.circle}></div>
+          </div>
+        )}
       </div>
 
       {menuOpen && <SideMenu onClose={() => setMenuOpen(false)} />}
