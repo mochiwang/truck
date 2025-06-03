@@ -43,27 +43,29 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
 const handleTranscript = (incoming: string) => {
   if (incoming !== stableTranscript.current) {
     stableTranscript.current = incoming;
+
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
     timeoutRef.current = setTimeout(() => {
       if (stableTranscript.current === prevTranscript.current) return;
 
-      // ✅ 清理机制：如果变化很大，清空缓存（避免旧语句污染新语句）
-      const isMajorUpdate =
-        stableTranscript.current.split(' ').length < 4 ||
-        !stableTranscript.current.includes(prevTranscript.current || '');
+      // ✅ 核心逻辑：只要出现了结束语气（. ? !）就清空之前缓存
+      const ended = /[.?!。？！]$/.test(stableTranscript.current.trim());
 
-      if (isMajorUpdate) {
-        bufferedSegments.current = [];
+      if (ended) {
+        bufferedSegments.current = []; // ✅ 清空缓存
       }
 
       prevTranscript.current = stableTranscript.current;
+
+      // ✅ 永远只用最后 3 句缓冲，防止越堆越长
       bufferedSegments.current.push(stableTranscript.current);
       const recent = bufferedSegments.current.slice(-3).join(' ');
       translateAndSpeak(recent);
     }, 1000);
   }
 };
+
 
   const explainLastFewLines = async () => {
     const contextLines = policeHistory.current.slice(-3);
