@@ -9,6 +9,12 @@ const API_BASE =
     ? 'http://localhost:3000'
     : 'https://truck-backend.vercel.app');
 
+const PRIORITY_PHRASES = [
+  'stop', 'pull over', 'license', 'registration',
+  'insurance', 'step out', 'wait', 'hands', 'open the door',
+  'slow down', 'speeding', 'turn off the engine',
+];
+
 const JARVIS_KEYWORDS = [
   'jarvis', '贾维斯', '假维斯', '家务事',
   'jiaweis', 'jia vis', 'javis', 'java s',
@@ -32,29 +38,24 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const stableTranscript = useRef('');
   const prevTranscript = useRef<string | null>(null);
-  const lastStableTime = useRef<number>(0);
 
   const handleTranscript = (incoming: string) => {
     const current = incoming.trim();
     if (!current || current === stableTranscript.current) return;
 
     stableTranscript.current = current;
-    lastStableTime.current = Date.now();
 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
-      const isSentenceEnd = /[.?!。？！]$/.test(current);
-      const isShortEnough = current.length < 20;
-      const tooLongWaiting = Date.now() - lastStableTime.current > 3000;
+      if (stableTranscript.current === prevTranscript.current) return;
 
-      if (
-        (isSentenceEnd || isShortEnough || tooLongWaiting) &&
-        current !== lastFlushedTranscript.current
-      ) {
+      const isSentenceEnd = /[.?!。？！]$/.test(current);
+      if (isSentenceEnd && current !== lastFlushedTranscript.current) {
         lastFlushedTranscript.current = current;
-        prevTranscript.current = current;
         translateAndSpeak(current);
       }
+
+      prevTranscript.current = current;
     }, 800);
   };
 
