@@ -37,6 +37,7 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const stableTranscript = useRef('');
   const prevTranscript = useRef<string | null>(null);
+  const bufferedSegments = useRef<string[]>([]); // ✅ 新增缓存
 
   const handleTranscript = (incoming: string) => {
     if (incoming !== stableTranscript.current) {
@@ -45,7 +46,10 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
       timeoutRef.current = setTimeout(() => {
         if (stableTranscript.current === prevTranscript.current) return;
         prevTranscript.current = stableTranscript.current;
-        translateAndSpeak(stableTranscript.current);
+
+        bufferedSegments.current.push(stableTranscript.current);
+        const recent = bufferedSegments.current.slice(-3).join(' ');
+        translateAndSpeak(recent);
       }, 1000);
     }
   };
