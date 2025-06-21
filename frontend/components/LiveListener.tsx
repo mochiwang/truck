@@ -151,13 +151,19 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
     return () => stop();
   }, []);
 
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'white'
-    }}>
-      <p style={{ marginTop: 10, fontSize: 18, color: '#ccc' }}>{status}</p>
+return (
+  <div
+    style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      color: 'white',
+    }}
+  >
+    <p style={{ marginTop: 10, fontSize: 18, color: '#ccc' }}>{status}</p>
 
-      <div style={{
+    <div
+      style={{
         width: 200,
         height: 200,
         borderRadius: '50%',
@@ -166,10 +172,13 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
         backgroundPosition: 'center',
         marginTop: 20,
         marginBottom: 30,
-        boxShadow: '0 0 60px 15px rgba(255, 100, 0, 0.4)'
-      }} />
+        boxShadow: '0 0 60px 15px rgba(255, 100, 0, 0.4)',
+      }}
+    />
 
-      <button onClick={stop} style={{
+    <button
+      onClick={stop}
+      style={{
         backgroundColor: '#f44336',
         color: 'white',
         padding: '12px 24px',
@@ -177,11 +186,31 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
         border: 'none',
         fontSize: 18,
         fontWeight: 'bold',
-        marginBottom: 30,
-        cursor: 'pointer'
-      }}>⏹️ 停止识别</button>
+        marginBottom: 10,
+        cursor: 'pointer',
+      }}
+    >
+      ⏹️ 停止识别
+    </button>
 
-      <div style={{
+    <button
+      onClick={() => enqueueSpeak('这是一条测试语音')}
+      style={{
+        backgroundColor: '#2196f3',
+        color: 'white',
+        padding: '10px 20px',
+        borderRadius: 10,
+        border: 'none',
+        fontSize: 16,
+        marginBottom: 30,
+        cursor: 'pointer',
+      }}
+    >
+      🔈 播放测试语音
+    </button>
+
+    <div
+      style={{
         backgroundColor: '#222',
         borderRadius: 12,
         padding: '16px 24px',
@@ -189,14 +218,18 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
         width: '90%',
         fontSize: 16,
         color: '#eee',
-        whiteSpace: 'pre-line'
-      }}>
-        {translated.length === 0 ? '⏳ 正在准备翻译...' : translated.join('\n')}
-      </div>
-
-      <p style={{ fontSize: 13, marginTop: 20, color: '#888' }}>
-        该话请继续，系统会实时显示英文识别结果。
-      </p>
+        whiteSpace: 'pre-line',
+      }}
+    >
+      {translated.length === 0
+        ? '⏳ 正在准备翻译...'
+        : translated.join('\n')}
     </div>
-  );
+
+    <p style={{ fontSize: 13, marginTop: 20, color: '#888' }}>
+      该话请继续，系统会实时显示英文识别结果。
+    </p>
+  </div>
+);
+
 }
