@@ -1,13 +1,16 @@
 {
   "name": "speech-backend",
   "version": "1.0.0",
-  "description": "WebSocket + Google Streaming STT backend (Render-ready)",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
+  "scripts": { "start": "node server.js" },
   "dependencies": {
-    "@google-cloud/speech": "^5.4.0",
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2",
+
+    "@google-cloud/speech": "^6.2.4",
+    "@google-cloud/text-to-speech": "^6.1.0",
+
     "dotenv": "^16.3.1",
     "ws": "^8.13.0"
   }
