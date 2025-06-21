@@ -1,18 +1,10 @@
-// src/screens/LiveListener.tsx
+// src/screens/LiveListener.tsx  ·  修复 Jarvis 触发停译 + 减少去抖延迟 1000→300
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  initPCMStream,
-  startPCMStream,
-  stopPCMStream,
-} from '../utils/audioStreamUtils';
-import {
-  enqueueSpeak,
-  unlockAudio,          // ✅ 保留
-} from '../utils/speakQueue';
+import { initPCMStream, startPCMStream, stopPCMStream } from '../utils/audioStreamUtils';
+import { enqueueSpeak, unlockAudio } from '../utils/speakQueue';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_BACKEND!;
-const API_BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL ||
   (process.env.NODE_ENV === 'development'
     ? 'http://localhost:3000'
     : 'https://truck-backend.vercel.app');
@@ -22,6 +14,8 @@ const JARVIS_KEYWORDS = [
   'javis','java s','service','jervis','jer vis','杰维斯',
   '加我说','叫我说','家里事','驾驶',
 ];
+
+const DEBOUNCE_MS = 300; // ⏱️ 说话稳定延迟
 
 type LiveListenerProps = { onStop?: () => void };
 
@@ -46,7 +40,7 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
         if (stableTranscript.current === prevTranscript.current) return;
         prevTranscript.current = stableTranscript.current;
         translateAndSpeak(stableTranscript.current);
-      }, 1000);
+      }, DEBOUNCE_MS);
     }
   };
 
@@ -72,14 +66,20 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
 
   /* ---------- 翻译 & TTS ---------- */
   const translateAndSpeak = async (text: string) => {
-    const isJarvis = new RegExp(
-      JARVIS_KEYWORDS.map(w =>
-        w.replace(/\s+/g,'').replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')
-      ).join('|'),
+    const keywordRegex = new RegExp(
+      JARVIS_KEYWORDS.map(w => w.replace(/\s+/g,'').replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')).join('|'),
       'i'
-    ).test(text.toLowerCase().replace(/\s+/g,''));
-    if (isJarvis) return explainLastFewLines();
+    );
+    const isJarvis = keywordRegex.test(text.toLowerCase().replace(/\s+/g,''));
 
+    if (isJarvis) {
+      // ✨ 清空去抖缓存，避免后续翻译卡死
+      stableTranscript.current = '';
+      prevTranscript.current   = null;
+      return explainLastFewLines();
+    }
+
+    // 记录警察原声
     if (text.trim() && !policeHistory.current.includes(text.trim())) {
       policeHistory.current.push(text.trim());
       if (policeHistory.current.length > 10) policeHistory.current.shift();
@@ -151,28 +151,17 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
         marginTop:20, marginBottom:30, boxShadow:'0 0 60px 15px rgba(255,100,0,0.4)'
       }} />
 
-      <button
-        onClick={stop}
-        style={{
-          backgroundColor:'#f44336', color:'#fff', padding:'12px 24px',
-          borderRadius:12, border:'none', fontSize:18, fontWeight:'bold',
-          marginBottom:10, cursor:'pointer',
-        }}
-      >
+      <button onClick={stop} style={{
+        backgroundColor:'#f44336', color:'#fff', padding:'12px 24px',
+        borderRadius:12, border:'none', fontSize:18, fontWeight:'bold', marginBottom:10, cursor:'pointer',
+      }}>
         ⏹️ 停止识别
       </button>
 
-      <button
-        onClick={async () => {
-          await unlockAudio();        // 🔑 解锁 Audio
-          enqueueSpeak('这是一条测试语音');
-        }}
-        style={{
-          backgroundColor:'#2196f3', color:'#fff', padding:'10px 20px',
-          borderRadius:10, border:'none', fontSize:16, marginBottom:30,
-          cursor:'pointer',
-        }}
-      >
+      <button onClick={async () => { await unlockAudio(); enqueueSpeak('这是一条测试语音'); }} style={{
+        backgroundColor:'#2196f3', color:'#fff', padding:'10px 20px',
+        borderRadius:10, border:'none', fontSize:16, marginBottom:30, cursor:'pointer',
+      }}>
         🔈 播放测试语音
       </button>
 
