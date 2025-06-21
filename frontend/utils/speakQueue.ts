@@ -1,86 +1,94 @@
+// src/utils/speakQueue.ts
 import { stopPCMStream, startPCMStream } from './audioStreamUtils';
 
-/* ------------------------------------------------------------------
-   speakQueue.ts  ·  复用单例 <audio> 元素，解决浏览器自动播放拦截
--------------------------------------------------------------------*/
+/* ──────────────────────────────────────────
+   1.  全局 AudioContext（一次 resume → 永久激活）
+────────────────────────────────────────── */
+export const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+let ctxUnlocked = false;
 
-// 🅰️ 单例 Audio 元素（在首次用户手势中 unlock）
-const audioEl = new Audio();
-audioEl.preload = 'auto';
-audioEl.crossOrigin = 'anonymous';
-let audioUnlocked = false; // 解锁状态
-
-// 若需要，可在按钮点击里 export 解锁函数调用
+/** 在真实用户手势中调用，解锁 AudioContext */
 export async function unlockAudio() {
-  if (audioUnlocked) return;
+  if (ctxUnlocked) return;
   try {
-    // 播放极短静音（Base64 编码的 0.1s mp3）
-    audioEl.src = 'data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAAMEBBAABAgMAAgACAgICAgICAgICAgP//AAA=';
-    await audioEl.play();
-    audioUnlocked = true;
-  } catch {
-    /* 若用户还未手势，浏览器会拒绝；下次按钮点击再尝试 */
-  }
+    await ctx.resume();
+    // iOS ≤15 需要播放一次极短静音才能彻底解锁
+    if (ctx.state === 'running') {
+      const silent = ctx.createBuffer(1, 2205, 44100);        // 0.05 s 静音
+      const src = ctx.createBufferSource();
+      src.buffer = silent;
+      src.connect(ctx.destination);
+      src.start(0);
+      src.stop(ctx.currentTime + 0.05);
+      ctxUnlocked = true;
+    }
+  } catch {/* ignore */}
 }
 
-/* ---------- 可选：保留空实现避免旧代码报错 ---------- */
-let getWs: () => WebSocket | null = () => null;
-export const setWsGetter = (fn: () => WebSocket | null) => { getWs = fn; };
-
-/* ---------- 队列状态 ---------- */
+/* ──────────────────────────────────────────
+   2. 队列状态
+────────────────────────────────────────── */
 let isSpeaking = false;
-const speakQueue: string[] = [];
-let lastSpokenText: string | null = null;
+const q: string[] = [];
+let lastSpoken: string | null = null;
 
-/* ---------- 公开 API ---------- */
-export const enqueueSpeak = (text: string) => {
-  if (text === lastSpokenText) return;
-  speakQueue.push(text);
+/* ──────────────────────────────────────────
+   3. 对外 API
+────────────────────────────────────────── */
+export const enqueueSpeak = (txt: string) => {
+  if (txt === lastSpoken) return;
+  q.push(txt);
   processQueue();
 };
 
-export const forceSpeak = (text: string) => {
-  speakQueue.length = 0;
+export const forceSpeak = (txt: string) => {
+  q.length = 0;
   isSpeaking = false;
-  speakQueue.push(text);
+  q.push(txt);
   processQueue();
 };
 
-/* ---------- 主流程：静音 → 获取 TTS → 播放 → 恢复麦克 ---------- */
+/* ──────────────────────────────────────────
+   4. 主流程：静音 → 拉取 MP3 → 解码 → 播放 → 恢复麦
+────────────────────────────────────────── */
 async function processQueue() {
-  if (isSpeaking || speakQueue.length === 0) return;
+  if (isSpeaking || q.length === 0) return;
 
-  const txt = speakQueue.shift()!;
+  const txt = q.shift()!;
   isSpeaking = true;
-  lastSpokenText = txt;
+  lastSpoken = txt;
 
-  // 若未解锁，尝试解锁（需在用户手势链中才能成功）
+  // 4-1 先解锁（若尚未成功）
   await unlockAudio();
 
-  // ⏹️ 静音麦克风流
+  // 4-2 静音麦克风
   await stopPCMStream();
 
   try {
-    const res = await fetch('https://speech-backend-2aut.onrender.com/api/tts', {
+    // 4-3 获取 & 解码 MP3
+    const rsp = await fetch('https://speech-backend-2aut.onrender.com/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: txt, lang: 'zh-CN' }),
     });
-    const { url } = await res.json();
+    const { url } = await rsp.json();
+    const bufArray = await (await fetch(url)).arrayBuffer();
+    const audioBuf = await ctx.decodeAudioData(bufArray);
 
-    const resumeMic = async () => {
-      await startPCMStream(); // 🔊 恢复麦克风推流
+    // 4-4 播放
+    const src = ctx.createBufferSource();
+    src.buffer = audioBuf;
+    src.connect(ctx.destination);
+
+    src.onended = async () => {
+      await startPCMStream();    // 恢复麦克风
       isSpeaking = false;
       processQueue();
     };
 
-    audioEl.onended = resumeMic;
-    audioEl.onerror = resumeMic;
-
-    audioEl.src = url;       // 复用元素，不再 new
-    await audioEl.play();    // 若解锁成功，浏览器不再拦截
+    src.start();                 // 立即播放
   } catch (err) {
-    console.error('TTS 播放失败:', err);
+    console.error('TTS 播放失败', err);
     await startPCMStream();
     isSpeaking = false;
     processQueue();

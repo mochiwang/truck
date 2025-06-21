@@ -7,8 +7,7 @@ import {
 } from '../utils/audioStreamUtils';
 import {
   enqueueSpeak,
-  unlockAudio,           // ← 新增
-  setWsGetter,
+  unlockAudio,          // ✅ 保留
 } from '../utils/speakQueue';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_BACKEND!;
@@ -105,7 +104,6 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
   const start = async () => {
     const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
-    setWsGetter(() => wsRef.current);
 
     ws.onopen = async () => {
       setStatus('🎙️ 麦克风已开启，识别中...');
@@ -166,7 +164,7 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
 
       <button
         onClick={async () => {
-          await unlockAudio();        // 🔑 解锁 Audio，之后无需再点屏幕
+          await unlockAudio();        // 🔑 解锁 Audio
           enqueueSpeak('这是一条测试语音');
         }}
         style={{
