@@ -1,31 +1,21 @@
 import {
   stopPCMStream,
-  startPCMStream
-} from '../utils/startPCMStream';
+  startPCMStream,
+} from './audioStreamUtils';
 
-/* ---------- ① 让 LiveListener 把当前 WebSocket 引进来 ---------- */
+/* ---------- 可选：保留空实现的 setWsGetter，避免旧代码报错 ---------- */
 let getWs: () => WebSocket | null = () => null;
-export const setWsGetter = (fn: () => WebSocket | null) => { getWs = fn; };
+export const setWsGetter = (fn: () => WebSocket | null) => {
+  getWs = fn;
+};
 
-/* ---------- ② 创建一个隐藏按钮，用来触发二次 getUserMedia ---------- */
-const hiddenBtn = document.createElement('button');
-hiddenBtn.style.display = 'none';
-document.body.appendChild(hiddenBtn);
-
-/* 点击隐藏按钮 = Safari 认可的用户手势，里面重新开麦 */
-hiddenBtn.addEventListener('click', async () => {
-  const ws = getWs();
-  if (ws) await startPCMStream(ws);
-  console.log('🎤 麦克风已重新启动（通过隐藏按钮）');
-});
-
-/* ---------- ③ 队列状态 ---------- */
+/* ---------- 队列状态 ---------- */
 let isSpeaking = false;
 const speakQueue: string[] = [];
 let lastSpokenText: string | null = null;
 let currentAudio: HTMLAudioElement | null = null;
 
-/* ---------- ④ 队列 API ---------- */
+/* ---------- 公开 API ---------- */
 export const enqueueSpeak = (text: string) => {
   if (text === lastSpokenText) return;
   speakQueue.push(text);
@@ -40,7 +30,7 @@ export const forceSpeak = (text: string) => {
   processQueue();
 };
 
-/* ---------- ⑤ 主流程：stop → fetch → play → hiddenBtn.click() → 继续 ---------- */
+/* ---------- 主流程：静音 → 获取 TTS → 播放 → 恢复麦克 ---------- */
 async function processQueue() {
   if (isSpeaking || speakQueue.length === 0) return;
 
@@ -48,7 +38,7 @@ async function processQueue() {
   isSpeaking = true;
   lastSpokenText = txt;
 
-  /* ⏹️  先彻底停止麦克风流，让蓝牙耳机切到 A2DP 立体声 */
+  // ⏹️ 先静音麦克风流
   stopPCMStream();
 
   try {
@@ -60,10 +50,9 @@ async function processQueue() {
     const { url } = await res.json();
     currentAudio = new Audio(url);
 
-    /* 封装恢复麦克风的逻辑（隐藏按钮 click 即可） */
     const resumeMic = () => {
-      hiddenBtn.click();            // Safari 认为“有用户手势” → getUserMedia OK
-      isSpeaking  = false;
+      startPCMStream(); // 🔊 恢复麦克风推流
+      isSpeaking = false;
       currentAudio = null;
       processQueue();
     };
@@ -74,7 +63,7 @@ async function processQueue() {
     await currentAudio.play();
   } catch (err) {
     console.error('TTS 播放失败:', err);
-    hiddenBtn.click();              // 出错也要恢复麦克风
+    startPCMStream(); // 确保麦克风恢复
     isSpeaking = false;
     processQueue();
   }
