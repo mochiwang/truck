@@ -1,19 +1,36 @@
-import {
-  stopPCMStream,
-  startPCMStream,
-} from './audioStreamUtils';
+import { stopPCMStream, startPCMStream } from './audioStreamUtils';
 
-/* ---------- 可选：保留空实现的 setWsGetter，避免旧代码报错 ---------- */
+/* ------------------------------------------------------------------
+   speakQueue.ts  ·  复用单例 <audio> 元素，解决浏览器自动播放拦截
+-------------------------------------------------------------------*/
+
+// 🅰️ 单例 Audio 元素（在首次用户手势中 unlock）
+const audioEl = new Audio();
+audioEl.preload = 'auto';
+audioEl.crossOrigin = 'anonymous';
+let audioUnlocked = false; // 解锁状态
+
+// 若需要，可在按钮点击里 export 解锁函数调用
+export async function unlockAudio() {
+  if (audioUnlocked) return;
+  try {
+    // 播放极短静音（Base64 编码的 0.1s mp3）
+    audioEl.src = 'data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAAMEBBAABAgMAAgACAgICAgICAgICAgP//AAA=';
+    await audioEl.play();
+    audioUnlocked = true;
+  } catch {
+    /* 若用户还未手势，浏览器会拒绝；下次按钮点击再尝试 */
+  }
+}
+
+/* ---------- 可选：保留空实现避免旧代码报错 ---------- */
 let getWs: () => WebSocket | null = () => null;
-export const setWsGetter = (fn: () => WebSocket | null) => {
-  getWs = fn;
-};
+export const setWsGetter = (fn: () => WebSocket | null) => { getWs = fn; };
 
 /* ---------- 队列状态 ---------- */
 let isSpeaking = false;
 const speakQueue: string[] = [];
 let lastSpokenText: string | null = null;
-let currentAudio: HTMLAudioElement | null = null;
 
 /* ---------- 公开 API ---------- */
 export const enqueueSpeak = (text: string) => {
@@ -23,7 +40,6 @@ export const enqueueSpeak = (text: string) => {
 };
 
 export const forceSpeak = (text: string) => {
-  if (currentAudio) currentAudio.pause();
   speakQueue.length = 0;
   isSpeaking = false;
   speakQueue.push(text);
@@ -38,8 +54,11 @@ async function processQueue() {
   isSpeaking = true;
   lastSpokenText = txt;
 
-  // ⏹️ 先静音麦克风流
-  stopPCMStream();
+  // 若未解锁，尝试解锁（需在用户手势链中才能成功）
+  await unlockAudio();
+
+  // ⏹️ 静音麦克风流
+  await stopPCMStream();
 
   try {
     const res = await fetch('https://speech-backend-2aut.onrender.com/api/tts', {
@@ -48,22 +67,21 @@ async function processQueue() {
       body: JSON.stringify({ text: txt, lang: 'zh-CN' }),
     });
     const { url } = await res.json();
-    currentAudio = new Audio(url);
 
-    const resumeMic = () => {
-      startPCMStream(); // 🔊 恢复麦克风推流
+    const resumeMic = async () => {
+      await startPCMStream(); // 🔊 恢复麦克风推流
       isSpeaking = false;
-      currentAudio = null;
       processQueue();
     };
 
-    currentAudio.onended = resumeMic;
-    currentAudio.onerror = resumeMic;
+    audioEl.onended = resumeMic;
+    audioEl.onerror = resumeMic;
 
-    await currentAudio.play();
+    audioEl.src = url;       // 复用元素，不再 new
+    await audioEl.play();    // 若解锁成功，浏览器不再拦截
   } catch (err) {
     console.error('TTS 播放失败:', err);
-    startPCMStream(); // 确保麦克风恢复
+    await startPCMStream();
     isSpeaking = false;
     processQueue();
   }
