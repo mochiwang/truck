@@ -1,20 +1,28 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
 
-// ⬇️  方案 A —— 本地 / Vercel 自动用 GOOGLE_APPLICATION_CREDENTIALS
-const client = new TextToSpeechClient();
-
-/*  ⬇️  方案 B —— 如果你只想用环境变量内联 JSON，不想上传文件
+// ✅ 使用内联环境变量 JSON 创建客户端（推荐 Render 使用）
 const client = new TextToSpeechClient({
   credentials: JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS_JSON!),
 });
-*/
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // ✅ 添加 CORS 响应头
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // ✅ 处理预检请求（CORS preflight）
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // ✅ 拒绝非 POST 请求
   if (req.method !== 'POST') return res.status(405).end();
 
+  // ✅ 解析请求体
   const { text, lang = 'zh-CN' } = req.body as { text?: string; lang?: string };
-  if (!text?.trim()) return res.status(400).json({ error: 'Missing text' });
+  if (!text?.trim()) {
+    return res.status(400).json({ error: 'Missing text' });
+  }
 
   try {
     const [resp] = await client.synthesizeSpeech({
