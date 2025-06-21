@@ -18,7 +18,7 @@ export async function checkMicPermissionAndNavigate(
       if (status.state === 'granted') {
         console.log('✅ 麦克风权限已授权');
         await delay(300); // ⏳ 给设备准备一点时间
-        router.push('/whisperer');
+        router.push('/prep');
         return;
       }
 
