@@ -3,83 +3,78 @@ import {
   startPCMStream
 } from '../utils/startPCMStream';
 
-/** 外部把当前 WebSocket 传进来，播报结束时重新 startPCMStream */
+/* ---------- ① 让 LiveListener 把当前 WebSocket 引进来 ---------- */
 let getWs: () => WebSocket | null = () => null;
 export const setWsGetter = (fn: () => WebSocket | null) => { getWs = fn; };
 
-/* ───────── 队列状态 ───────── */
+/* ---------- ② 创建一个隐藏按钮，用来触发二次 getUserMedia ---------- */
+const hiddenBtn = document.createElement('button');
+hiddenBtn.style.display = 'none';
+document.body.appendChild(hiddenBtn);
+
+/* 点击隐藏按钮 = Safari 认可的用户手势，里面重新开麦 */
+hiddenBtn.addEventListener('click', async () => {
+  const ws = getWs();
+  if (ws) await startPCMStream(ws);
+  console.log('🎤 麦克风已重新启动（通过隐藏按钮）');
+});
+
+/* ---------- ③ 队列状态 ---------- */
 let isSpeaking = false;
 const speakQueue: string[] = [];
 let lastSpokenText: string | null = null;
 let currentAudio: HTMLAudioElement | null = null;
 
-/** 入队（跳过连续相同内容） */
+/* ---------- ④ 队列 API ---------- */
 export const enqueueSpeak = (text: string) => {
-  if (text === lastSpokenText) {
-    console.log('⚠️ 已播过相同内容，跳过:', text);
-    return;
-  }
+  if (text === lastSpokenText) return;
   speakQueue.push(text);
-  console.log('📥 入队:', text);
   processQueue();
 };
 
-/** 强制打断当前播报并插入新文本 */
 export const forceSpeak = (text: string) => {
-  console.log('⛔️ 强制播报:', text);
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio = null;
-  }
+  if (currentAudio) currentAudio.pause();
   speakQueue.length = 0;
   isSpeaking = false;
   speakQueue.push(text);
   processQueue();
 };
 
-/** 主流程：stopMic → fetch TTS → 播放 → startMic → 递归 */
+/* ---------- ⑤ 主流程：stop → fetch → play → hiddenBtn.click() → 继续 ---------- */
 async function processQueue() {
   if (isSpeaking || speakQueue.length === 0) return;
 
-  const text = speakQueue.shift()!;
-  lastSpokenText = text;
-  isSpeaking     = true;
-  console.log('🔊 播报开始:', text);
+  const txt = speakQueue.shift()!;
+  isSpeaking = true;
+  lastSpokenText = txt;
 
-  /* ① 完全关闭麦克风流，释放 A2DP 通道 */
+  /* ⏹️  先彻底停止麦克风流，让蓝牙耳机切到 A2DP 立体声 */
   stopPCMStream();
 
   try {
-    const res = await fetch(
-      'https://speech-backend-2aut.onrender.com/api/tts',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, lang: 'zh-CN' }),
-      }
-    );
-    const { url } = await res.json();          // data:audio/mp3;base64,...
-    currentAudio  = new Audio(url);
+    const res = await fetch('https://speech-backend-2aut.onrender.com/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: txt, lang: 'zh-CN' }),
+    });
+    const { url } = await res.json();
+    currentAudio = new Audio(url);
 
-    const resumeMic = async () => {
-      const ws = getWs();
-      if (ws) await startPCMStream(ws);         // ② 播完后重开麦克风流
+    /* 封装恢复麦克风的逻辑（隐藏按钮 click 即可） */
+    const resumeMic = () => {
+      hiddenBtn.click();            // Safari 认为“有用户手势” → getUserMedia OK
       isSpeaking  = false;
       currentAudio = null;
       processQueue();
     };
 
     currentAudio.onended = resumeMic;
-    currentAudio.onerror = (e) => {
-      console.error('❌ 播放错误:', e);
-      resumeMic();
-    };
+    currentAudio.onerror = resumeMic;
 
     await currentAudio.play();
   } catch (err) {
-    console.error('❌ 请求或播放失败:', err);
-    const ws = getWs();
-    if (ws) await startPCMStream(ws);           // 失败也要恢复麦克风
+    console.error('TTS 播放失败:', err);
+    hiddenBtn.click();              // 出错也要恢复麦克风
     isSpeaking = false;
     processQueue();
   }
