@@ -1,26 +1,21 @@
-// src/screens/LiveListener.tsx  ·  修复 Jarvis 触发停译 + 减少去抖延迟 1000→300
+// src/screens/LiveListener.tsx  ·  Jarvis 缓存清空 + 去抖 300ms + WS keep‑alive 注入
 import React, { useEffect, useRef, useState } from 'react';
 import { initPCMStream, startPCMStream, stopPCMStream } from '../utils/audioStreamUtils';
-import { enqueueSpeak, unlockAudio } from '../utils/speakQueue';
+import { enqueueSpeak, unlockAudio, setWsGetter } from '../utils/speakQueue';  // ← 增 setWsGetter
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_BACKEND!;
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL ||
-  (process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000'
-    : 'https://truck-backend.vercel.app');
+  (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://truck-backend.vercel.app');
 
 const JARVIS_KEYWORDS = [
-  'jarvis','贾维斯','假维斯','家务事','jiaweis','jia vis',
-  'javis','java s','service','jervis','jer vis','杰维斯',
-  '加我说','叫我说','家里事','驾驶',
+  'jarvis','贾维斯','假维斯','家务事','jiaweis','jia vis','javis','java s','service','jervis','jer vis','杰维斯','加我说','叫我说','家里事','驾驶',
 ];
 
-const DEBOUNCE_MS = 300; // ⏱️ 说话稳定延迟
+const DEBOUNCE_MS = 300; // 说话稳定延迟
 
 type LiveListenerProps = { onStop?: () => void };
 
 export default function LiveListener({ onStop }: LiveListenerProps) {
-  /* ---------- 状态 & ref ---------- */
   const [status, setStatus]         = useState('🎙️ 正在识别中...');
   const [translated, setTranslated] = useState<string[]>([]);
 
@@ -48,38 +43,28 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
   const explainLastFewLines = async () => {
     const ctxLines = policeHistory.current.slice(-3);
     if (!ctxLines.length) return enqueueSpeak('我没听清楚前面说了什么');
-
     try {
       const res  = await fetch(`${API_BASE}/api/explain`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recentTexts: ctxLines }),
       });
-      const data   = await res.json();
-      const raw    = data.summary ?? '';
+      const raw = (await res.json()).summary ?? '';
       const cleaned = raw.replace(/^【?总结】?[:：]?\s*/i, '').trim();
       enqueueSpeak(cleaned.length < 4 ? '他可能在表达一些请求或问题' : cleaned);
-    } catch {
-      enqueueSpeak('解释失败，请稍后重试');
-    }
+    } catch { enqueueSpeak('解释失败，请稍后重试'); }
   };
 
   /* ---------- 翻译 & TTS ---------- */
   const translateAndSpeak = async (text: string) => {
-    const keywordRegex = new RegExp(
-      JARVIS_KEYWORDS.map(w => w.replace(/\s+/g,'').replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')).join('|'),
-      'i'
-    );
+    const keywordRegex = new RegExp(JARVIS_KEYWORDS.map(w => w.replace(/\s+/g,'').replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')).join('|'), 'i');
     const isJarvis = keywordRegex.test(text.toLowerCase().replace(/\s+/g,''));
 
     if (isJarvis) {
-      // ✨ 清空去抖缓存，避免后续翻译卡死
       stableTranscript.current = '';
       prevTranscript.current   = null;
       return explainLastFewLines();
     }
 
-    // 记录警察原声
     if (text.trim() && !policeHistory.current.includes(text.trim())) {
       policeHistory.current.push(text.trim());
       if (policeHistory.current.length > 10) policeHistory.current.shift();
@@ -87,9 +72,7 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
 
     try {
       const res = await fetch(`${API_BASE}/api/translateWhisperer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
       });
       const { zh } = await res.json();
       if (zh && zh !== lastTranslated.current) {
@@ -100,10 +83,11 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
     } catch {/* ignore */}
   };
 
-  /* ---------- WebSocket & Mic 生命周期 ---------- */
+  /* ---------- WebSocket & Mic ---------- */
   const start = async () => {
     const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
+    setWsGetter(() => wsRef.current);   // 注入 WS 给 keep‑alive ping
 
     ws.onopen = async () => {
       setStatus('🎙️ 麦克风已开启，识别中...');
@@ -113,10 +97,8 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
 
     ws.onmessage = (e) => {
       let transcript = '';
-      try {
-        const payload = JSON.parse(e.data);
-        if (payload.transcript) transcript = payload.transcript;
-      } catch { transcript = e.data; }
+      try { const p = JSON.parse(e.data); if (p.transcript) transcript = p.transcript; }
+      catch { transcript = e.data; }
       if (transcript.trim()) handleTranscript(transcript);
     };
 
@@ -132,49 +114,24 @@ export default function LiveListener({ onStop }: LiveListenerProps) {
     onStop?.();
   };
 
-  /* ---------- 初始化 & 清理 ---------- */
-  useEffect(() => {
-    start();
-    return () => stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { start(); return () => stop(); }, []);
 
   /* ---------- UI ---------- */
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', color:'white' }}>
       <p style={{ marginTop:10, fontSize:18, color:'#ccc' }}>{status}</p>
 
-      <div style={{
-        width:200, height:200, borderRadius:'50%',
-        backgroundImage:'url(/assets/whisperer-circle.png)',
-        backgroundSize:'cover', backgroundPosition:'center',
-        marginTop:20, marginBottom:30, boxShadow:'0 0 60px 15px rgba(255,100,0,0.4)'
-      }} />
+      <div style={{ width:200, height:200, borderRadius:'50%', backgroundImage:'url(/assets/whisperer-circle.png)', backgroundSize:'cover', backgroundPosition:'center', marginTop:20, marginBottom:30, boxShadow:'0 0 60px 15px rgba(255,100,0,0.4)' }} />
 
-      <button onClick={stop} style={{
-        backgroundColor:'#f44336', color:'#fff', padding:'12px 24px',
-        borderRadius:12, border:'none', fontSize:18, fontWeight:'bold', marginBottom:10, cursor:'pointer',
-      }}>
-        ⏹️ 停止识别
-      </button>
+      <button onClick={stop} style={{ backgroundColor:'#f44336', color:'#fff', padding:'12px 24px', borderRadius:12, border:'none', fontSize:18, fontWeight:'bold', marginBottom:10, cursor:'pointer' }}>⏹️ 停止识别</button>
 
-      <button onClick={async () => { await unlockAudio(); enqueueSpeak('这是一条测试语音'); }} style={{
-        backgroundColor:'#2196f3', color:'#fff', padding:'10px 20px',
-        borderRadius:10, border:'none', fontSize:16, marginBottom:30, cursor:'pointer',
-      }}>
-        🔈 播放测试语音
-      </button>
+      <button onClick={async () => { await unlockAudio(); enqueueSpeak('这是一条测试语音'); }} style={{ backgroundColor:'#2196f3', color:'#fff', padding:'10px 20px', borderRadius:10, border:'none', fontSize:16, marginBottom:30, cursor:'pointer' }}>🔈 播放测试语音</button>
 
-      <div style={{
-        backgroundColor:'#222', borderRadius:12, padding:'16px 24px',
-        maxWidth:600, width:'90%', fontSize:16, color:'#eee', whiteSpace:'pre-line',
-      }}>
+      <div style={{ backgroundColor:'#222', borderRadius:12, padding:'16px 24px', maxWidth:600, width:'90%', fontSize:16, color:'#eee', whiteSpace:'pre-line' }}>
         {translated.length === 0 ? '⏳ 正在准备翻译...' : translated.join('\n')}
       </div>
 
-      <p style={{ fontSize:13, marginTop:20, color:'#888' }}>
-        继续对话吧，系统会实时翻译和播报。
-      </p>
+      <p style={{ fontSize:13, marginTop:20, color:'#888' }}>继续对话吧，系统会实时翻译和播报。</p>
     </div>
   );
 }

@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const prompt = `
 你是一个聪明、实用的 AI 助手，我会给你一段英语对话的片段，请你：
 
-1. 推测说话者大概想干什么（哪怕语义不完整，也请你主动推理）
+1. 首先告诉用户你是jarvis，你会帮助用户，然后推测说话者大概想干什么（哪怕语义不完整，也请你主动推理）
 2. 用自然的三句话中文口语总结他们的意图和场景（别机械翻译）
 3. 如果能给出一句有帮助的提醒或下一步建议，也请顺便说一句
 

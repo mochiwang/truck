@@ -1,46 +1,53 @@
-// src/utils/speakQueue.ts
+// src/utils/speakQueue.ts  ·  Web Audio 播放 + WS keep‑alive ping
 import { stopPCMStream, startPCMStream } from './audioStreamUtils';
 
-/* ──────────────────────────────────────────
-   1.  全局 AudioContext（一次 resume → 永久激活）
-────────────────────────────────────────── */
+/* ─── 1. AudioContext 单例 ───────────────────────────────────── */
 export const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
 let ctxUnlocked = false;
 
-/** 在真实用户手势中调用，解锁 AudioContext */
 export async function unlockAudio() {
   if (ctxUnlocked) return;
-  try {
-    await ctx.resume();
-    // iOS ≤15 需要播放一次极短静音才能彻底解锁
-    if (ctx.state === 'running') {
-      const silent = ctx.createBuffer(1, 2205, 44100);        // 0.05 s 静音
-      const src = ctx.createBufferSource();
-      src.buffer = silent;
-      src.connect(ctx.destination);
-      src.start(0);
-      src.stop(ctx.currentTime + 0.05);
-      ctxUnlocked = true;
-    }
-  } catch {/* ignore */}
+  await ctx.resume();
+  if (ctx.state === 'running') {
+    // iOS ≤15 静音 0.05s 以彻底解锁
+    const silent = ctx.createBuffer(1, 2205, 44100);
+    const src = ctx.createBufferSource();
+    src.buffer = silent;
+    src.connect(ctx.destination);
+    src.start();
+    src.stop(ctx.currentTime + 0.05);
+    ctxUnlocked = true;
+  }
 }
 
-/* ──────────────────────────────────────────
-   2. 队列状态
-────────────────────────────────────────── */
+/* ─── 2. 队列状态 ───────────────────────────────────────────── */
 let isSpeaking = false;
 const q: string[] = [];
 let lastSpoken: string | null = null;
 
-/* ──────────────────────────────────────────
-   3. 对外 API
-────────────────────────────────────────── */
+/* ─── 3. WebSocket keep‑alive (注入 getter) ─────────────────── */
+let wsGetter: () => WebSocket | null = () => null;
+export const setWsGetter = (fn: () => WebSocket | null) => { wsGetter = fn; };
+
+let pingTimer: NodeJS.Timeout | null = null;
+function startPing(interval = 3000) {
+  stopPing();
+  pingTimer = setInterval(() => {
+    const ws = wsGetter();
+    if (ws && ws.readyState === ws.OPEN) ws.send('{"type":"ping"}');
+  }, interval);
+}
+function stopPing() {
+  if (pingTimer) clearInterval(pingTimer);
+  pingTimer = null;
+}
+
+/* ─── 4. 对外 API ───────────────────────────────────────────── */
 export const enqueueSpeak = (txt: string) => {
   if (txt === lastSpoken) return;
   q.push(txt);
   processQueue();
 };
-
 export const forceSpeak = (txt: string) => {
   q.length = 0;
   isSpeaking = false;
@@ -48,9 +55,7 @@ export const forceSpeak = (txt: string) => {
   processQueue();
 };
 
-/* ──────────────────────────────────────────
-   4. 主流程：静音 → 拉取 MP3 → 解码 → 播放 → 恢复麦
-────────────────────────────────────────── */
+/* ─── 5. 主流程 ─────────────────────────────────────────────── */
 async function processQueue() {
   if (isSpeaking || q.length === 0) return;
 
@@ -58,37 +63,35 @@ async function processQueue() {
   isSpeaking = true;
   lastSpoken = txt;
 
-  // 4-1 先解锁（若尚未成功）
   await unlockAudio();
-
-  // 4-2 静音麦克风
   await stopPCMStream();
+  if (wsGetter()) startPing();          // 开启心跳
 
   try {
-    // 4-3 获取 & 解码 MP3
     const rsp = await fetch('https://speech-backend-2aut.onrender.com/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: txt, lang: 'zh-CN' }),
     });
     const { url } = await rsp.json();
-    const bufArray = await (await fetch(url)).arrayBuffer();
-    const audioBuf = await ctx.decodeAudioData(bufArray);
+    const buf = await (await fetch(url)).arrayBuffer();
+    const audioBuf = await ctx.decodeAudioData(buf);
 
-    // 4-4 播放
     const src = ctx.createBufferSource();
     src.buffer = audioBuf;
     src.connect(ctx.destination);
 
     src.onended = async () => {
-      await startPCMStream();    // 恢复麦克风
+      stopPing();
+      await startPCMStream();
       isSpeaking = false;
       processQueue();
     };
 
-    src.start();                 // 立即播放
+    src.start();
   } catch (err) {
     console.error('TTS 播放失败', err);
+    stopPing();
     await startPCMStream();
     isSpeaking = false;
     processQueue();
